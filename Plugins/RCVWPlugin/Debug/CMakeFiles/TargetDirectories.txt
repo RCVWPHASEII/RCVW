@@ -1,0 +1,3 @@
+/media/sf_Shared/RCVW/Plugins/RCVWPlugin/Debug/CMakeFiles/RCVWPlugin.dir
+/media/sf_Shared/RCVW/Plugins/RCVWPlugin/Debug/CMakeFiles/bundle_RCVWPlugin.dir
+/media/sf_Shared/RCVW/Plugins/RCVWPlugin/Debug/CMakeFiles/bundle_RCVWPlugin_cleanup.dir

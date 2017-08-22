@@ -1,0 +1,67 @@
+{
+	"name":"RCVW",
+	"description":"Creates RCVW Alerts and Warnings",
+	"version":"1.0.0",
+	"exeLocation":"/Debug/RCVWPlugin",
+	"coreIpAddr":"127.0.0.1",
+	"corePort":24601,
+	"messageTypes":[
+	   {
+	       "type":"Application",
+	       "subtype":"Basic",
+	       "description":"Message used to send alerts to the UI or other Plugins that a warning needs to be issued."
+	   }
+	],
+	"configuration":[
+	   {
+	       "key":"Friction",
+	       "default":"0.8",
+	       "description":"The coefficient of friction to use for the stopping distance calculation. This is the value that will differentiate the vehicle types. Should probably use the kinetic coeeficient of friction to be more conservative."
+	   },
+	   {
+	       "key":"Reaction Time",
+	       "default":"1.0",
+	       "description":"The driver reaction time to use in the stopping distance calculation in seconds."
+	   },
+	   {
+	       "key":"Safety Offset",
+	       "default":"1.5",
+	       "description":"The multiplier to apply to the stopping distance to ensure a safe stop."
+	   },
+	   {
+	       "key":"Message Expiration",
+	       "default":"6000",
+	       "description":"The amount of time in ms to wait before issuing a warning that the current message data is stale."
+	   },
+	   {
+	       "key":"Output Interface",
+	       "default":"0",
+	       "description":"The type of interface that the application needs to display its messages on. 0=HID, 1=Ford SYNC, 2=Android Auto"
+	   },
+	   {
+	       "key":"Distance To HRI",
+	       "default":"300.0",
+	       "description":"Distance to a known HRI for warning a driver that communications with the RBS are down."
+	   },
+	   {
+			"key":"HRI Locations",
+			"default":"{ \"HRIs\": [\n  {\"Latitude\":0, \"Longitude\":0, \"HRIName\":\"Hilliard-Davidson\"}\n] }",
+			"description":"JSON data defining a list of equipped HRI locations."
+	   },
+	   {
+	   		"key":"Extended Intersection",
+	   		"default":"0.1",
+	   		"description":"The percentage to add to the radius of the intersection"
+	   },
+	   {
+	       "key":"HRI Warning Threshold Speed",
+	       "default":"1.0",
+	       "description":"The maximum vehicle speed in meters per second for which the HRI warning will be active if the vehicle is in the HRI."
+	   },
+	   {
+	       "key":"Use Deceleration",
+	       "default":"false",
+	       "description":"Use calculated deceleration to determine if vehicle will stop before HRI in addition to velocity based warning calculation"
+	   }
+	]
+}

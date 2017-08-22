@@ -1,0 +1,2 @@
+/media/sf_Shared/RCVW/Plugins/HRIStatusPlugin/Debug/_CPack_Packages/Linux/ZIP/HRIStatusPlugin-0.0.8/bin/HRIStatusPlugin
+/media/sf_Shared/RCVW/Plugins/HRIStatusPlugin/Debug/_CPack_Packages/Linux/ZIP/HRIStatusPlugin-0.0.8/./manifest.json
