@@ -1,8 +1,8 @@
 {
-	"name":"HRIStatus",
+	"name":"@TMX_PLUGIN_NAME@",
 	"description":"Sends HRI Status as SPAT Message",
-	"version":"1.0.0",
-	"exeLocation":"/Debug/HRIStatusPlugin",
+	"version":"@PROJECT_VERSION@",
+	"exeLocation":"/bin/@PROJECT_NAME@",
 	"coreIpAddr":"127.0.0.1",
 	"corePort":24601,
 	"messageTypes":[
@@ -47,6 +47,22 @@
 		    "key":"Always Send",
 		    "default":"True",
 		    "description":"Always send DSRC communication. Otherwise only send when BSMs or Preempt is true."
-		}
+		},
+		{
+		    "key":"Port Name",
+		    "default":"/dev/ttyS0",
+		    "description":"The serial port to use for communication, blank if not using serial port"
+		},
+		{
+		    "key":"Serial Data Timeout",
+		    "default":"1500",
+		    "description":"The timeout to mark serial data as invalid in milliseconds."
+		},
+	   	{
+	       	    "key":"LogLevel",
+	       	    "default":"INFO",
+	       	    "description":"The log level"
+	   	}
+
 	]
 }

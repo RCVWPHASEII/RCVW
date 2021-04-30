@@ -1,3 +1,0 @@
-/media/sf_Shared/RCVW/Plugins/HRIStatusPlugin/Debug/CMakeFiles/HRIStatusPlugin.dir
-/media/sf_Shared/RCVW/Plugins/HRIStatusPlugin/Debug/CMakeFiles/bundle_HRIStatusPlugin.dir
-/media/sf_Shared/RCVW/Plugins/HRIStatusPlugin/Debug/CMakeFiles/bundle_HRIStatusPlugin_cleanup.dir
