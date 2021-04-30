@@ -1,7 +1,7 @@
 Rail Crossing Violation Warning (RCVW)
-9/1/2017
-version 1.0 (Initial Release)
+04/30/2021
+version 1.1 (Phase II Release)
 
-Runs on V2I Hub v2.4 or greater
+Runs on V2I Hub v3.3 or greater
 
 View Readme for installation instructions
