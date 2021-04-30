@@ -1,0 +1,52 @@
+{
+	"name":"@TMX_PLUGIN_NAME@",
+	"description":"Reads data from the CAN bus and sends a VehicleBasicMessage",
+	"version":"@PROJECT_VERSION@",
+	"exeLocation":"/bin/@PROJECT_NAME@",
+	"coreIpAddr":"127.0.0.1",
+	"corePort":24601,
+	"messageTypes":[
+		{
+			"type":"Vehicle",
+			"subtype":"Basic",
+			"description":"Message that contains informaiton about vehicel state including speed, gear, and turn signal."
+		}
+	],
+	"configuration":[
+		{
+			"key":"Frequency",
+			"default":"300",
+			"description":"How often to send out a new vehicle message in milliseconds."
+		},
+		{
+		    "key":"Make",
+		    "default":"Unknown",
+		    "description":"The make of this vehicle."	
+		},
+		{
+		    "key":"Model",
+		    "default":"Unknown",
+		    "description":"The model of this vehicle."	
+		},
+		{
+		    "key":"Year",
+		    "default":"Unknown",
+		    "description":"The year of this vehicle."	
+		},
+		{
+			"key":"Drivers",
+			"default":"",
+			"description":"A comma-separated list of drivers to use in the connection to this vehicle."
+		},
+		{
+			"key":"Inputs",
+			"default":"",
+			"description":"A comma-separated list of known input configurations to use in the connection to this vehicle."
+		},
+		{
+			"key":"ConfigDir",
+			"default":"/usr/local/share/tmx/config",
+			"description":"The directory to search for the configuration files"
+		}
+	]
+}

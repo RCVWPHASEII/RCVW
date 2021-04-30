@@ -1,0 +1,20 @@
+{
+    "name":"@TMX_PLUGIN_NAME@",
+    "description":"Applies Differential GPS corrections, namely RTCM, to the on-board GPS device.",
+    "version":"@PROJECT_VERSION@",
+    "exeLocation":"/bin/@PROJECT_NAME@",
+    "coreIpAddr":"127.0.0.1",
+    "corePort":24601,
+    "configuration":[
+        {
+            "key":"RTCM Version",
+            "default":"3.3",
+            "description":"Only apply incoming RTCM correction messages of the given version.  Set to 0 to disable RTCM corrections."
+        },
+        {
+            "key":"Device",
+            "default":"/dev/ttyACM0",
+            "description":"The serial device for the GPS to write the corrections to"
+        }
+    ]
+}

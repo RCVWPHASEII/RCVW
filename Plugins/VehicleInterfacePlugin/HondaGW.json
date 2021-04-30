@@ -1,0 +1,215 @@
+{
+	"name": "HondaGateway",
+	"revision": "20191001",
+	"comment": "Input file for the Honda Automotive CAN Gateway.",
+	"can": [
+		{
+			"name": "monitor-600",
+			"comment": "Vehicle-OBE 1",
+			"id": "0x600",
+			"mask": "EFF",
+			"elements": [
+				{
+					"name": "GearPosition",
+					"comment": "The current position of the gear shift",
+					"byte": 0,
+					"len": 1,
+					"states": {
+						"Park": 1,
+						"Reverse": 2,
+						"Other": 3,
+						"Drive": "*"
+					}
+				},
+				{
+					"name": "Brake",
+					"comment": "True if the break is applied, false otherwise",
+					"byte": 0,
+					"len": 1,
+					"mask": "0x40",
+					"states": {
+						"Inactive": 0,
+						"Active": "*"
+					}
+				},
+				{
+					"name": "ABS",
+					"comment": "True if the anti-lock braking system is applied, false otherwise",
+					"byte": 0,
+					"len": 1,
+					"mask": "0x80",
+					"states": {
+						"Inactive": 0,
+						"Active": "*"
+					}
+				},
+				{
+					"name": "StabilityControl",
+					"comment": "True if the stability control system is active, false otherwise",
+					"byte": 2,
+					"len": 1,
+					"mask": "0x80",
+					"states": {
+						"Inactive": 0,
+						"Active": "*"
+					}
+				}
+			]
+		},
+		{
+			"name": "monitor-601",
+			"comment": "Vehicle-OBE-2",
+			"id": "0x601",
+			"mask": "EFF",
+			"elements": [
+				{
+					"name": "SteeringWheelAngle",
+					"comment": "The current angle of the steering wheel, assuming 0 is normal position",
+					"datatype": "double",
+					"unit": "⁰",
+					"signedval": 1,
+					"byte": 0,
+					"len": 2,
+					"mask": "0xFFFF",
+					"scale": 0.03125
+				},
+				{
+					"name": "Temp",
+					"comment": "The outside air temperature",
+					"datatype": "double",
+					"unit": "⁰C",
+					"byte": 2,
+					"len": 1,
+					"scale": 0.5,
+					"adjust": -40
+				},
+				{
+					"name": "Speed",
+					"comment": "The speed of the vehicle",
+					"datatype": "double",
+					"unit": "kph",
+					"byte": 3,
+					"len": 2,
+					"scale": 0.01
+				},
+				{
+					"name": "HeadLights",
+					"comment": "True if the head lights are on, false otherwise",
+					"byte": 6,
+					"len": 1,
+					"mask": "0x08",
+					"states": {
+						"Inactive": 0,
+						"Active": "*"
+					}
+				},
+				{
+					"name": "HighBeam",
+					"comment": "True if the high beam lights are on, false otherwise",
+					"byte": 7,
+					"len": 1,
+					"mask": "0x20",
+					"states": {
+						"Inactive": 0,
+						"Active": "*"
+					}
+				},
+				{
+					"name": "Wipers",
+					"comment": "True if the front wipers are active, false otherwise",
+					"byte": 7,
+					"len": 1,
+					"mask": "0x0E",
+					"repeat": 10,
+					"states": {
+						"Off": 0,
+						"": "*"
+					}
+				}
+			]
+		},
+		{
+			"name": "monitor-602",
+			"comment": "Vehicle-OBE 3",
+			"id": "0x602",
+			"mask": "EFF",
+			"elements": [
+				{
+					"name": "Acceleration",
+					"comment": "The longitudinal acceleration of the vehicle",
+					"datatype": "double",
+					"unit": "m/s/s",
+					"byte": 0,
+					"len": 2,
+					"mask": "0xFFC0",
+					"scale": 0.000303125,
+					"adjust": -9.9
+				},
+				{
+					"name": "TurnSignalPosition",
+					"comment": "The current position of the turn signal",
+					"byte": 2,
+					"len": 1,
+					"repeat": 0,
+					"mask": "0x0C",
+					"states": {
+						"Right": 4,
+						"Left": 8,
+						"Hazard": 12,
+						"Off": "*"
+					}
+				},
+				{
+					"name": "AcceleratorPosition",
+					"comment": "The percentage position of the accelerator pedal, assuming 0 is none and 100 is full",
+					"datatype": "double",
+					"unit": "%",
+					"byte": 3,
+					"len": 1,
+					"scale": 0.3921568627450980392156862745098
+				},
+				{
+					"name": "VehicleLength",
+					"comment": "The length of the vehicle",
+					"datatype": "double",
+					"unit": "cm",
+					"byte": 5,
+					"len": 2,
+					"mask": "0xFFC0",
+					"scale": 0.0078125,
+					"adjust": 100
+				}
+			]
+		},
+		{
+			"name": "monitor-603",
+			"comment": "Vehicle-OBE 4",
+			"id": "0x603",
+			"mask": "EFF",
+			"elements": [
+				{
+					"name": "LeftFrontWheel",
+					"comment": "The wheel velocity of the front wheels",
+					"datatype": "double",
+					"unit": "rpm",
+					"signedval": 1,
+					"byte": 0,
+					"len": 2,
+					"mask": "0xFFFF",
+					"scale": 0.25
+				},
+				{
+					"name": "RightFrontWheel",
+					"comment": "The wheel velocity of the rear wheels",
+					"datatype": "double",
+					"unit": "rpm",
+					"signedval": 1,
+					"byte": 2,
+					"len": 2,
+					"mask": "0xFFFF",
+					"scale": 0.25
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,53 @@
+# git ls-files --others --exclude-from=.git/info/exclude
+# Lines that start with '#' are comments.
+# For a project mostly in C, the following would be a good set of
+# exclude patterns (uncomment them if you want to use them):
+*.[oa]
+*~
+*.bak
+*.so
+AIOUSB/samples/USB-AI16-16/*_test
+java/tests/test.java
+AIOUSB/lib/wrappers/*/AIOUSB_wrap.c
+AIOUSB/lib/wrappers/*/AIOUSB
+AIOUSB/lib/wrappers/*/*_build.txt
+*.cmd
+BUILD_LOG.txt
+AIOUSB/build
+AIOUSB/*TAGS*
+AIOUSB/G*
+build
+*.tap
+*_cpp_test
+AIOUSB/lib/G*
+AIOUSB/html
+AIOUSB/latex
+AIOUSB/man
+AIOUSB/samples/USB-AI16-16/*.txt
+HOLD*
+*.class
+*.jar
+AIOUSB/lib/ndkbuild/builtndk.txt
+AIOUSB/lib/ndkbuild/obj
+AIOUSB/deprecated/classlib/warnings
+AIOUSB/lib/wrappers/AIOUSB
+AIOUSB/lib/wrappers/*/*_built.txt
+AIOUSB/lib/wrappers/android/obj/
+doc
+man
+latex
+AIOUSB/lib/wrappers/perl/AIOUSB.bs
+AIOUSB/lib/wrappers/perl/AIOUSB.pm
+AIOUSB/lib/wrappers/perl/MYMETA.json
+AIOUSB/lib/wrappers/perl/MYMETA.yml
+AIOUSB/lib/wrappers/perl/Makefile
+AIOUSB/lib/wrappers/perl/blib/
+AIOUSB/lib/wrappers/perl/pm_to_blib
+AIOUSB/lib/wrappers/ruby/Makefile
+AIOUSB/lib/wrappers/octave/AIOUSB.oct
+AIOUSB/lib/wrappers/octave/AIOUSB_wrap.cpp
+AIOUSB/lib/wrappers/php/AIOUSB.php
+AIOUSB/lib/wrappers/php/php_AIOUSB.h
+AIOUSB/lib/wrappers/python/AIOUSB.py
+AIOUSB/lib/wrappers/python/AIOUSB.pyc
+AIOUSB/lib/wrappers/scilab
