@@ -1,0 +1,46 @@
+{
+	"name": "VolvoHDCAN",
+	"revision": "20200518",
+	"comment": "Input file for the heavy-duty Volvo truck CAN.",
+	"types": [ "Heavy Duty Truck" ],
+	"makes": [ "Volvo" ],
+	"can": [
+		{
+			"name": "monitor-speed",
+			"comment": "Wheel-based speed",
+			"id": "0x0CF00400",
+			"mask":"EFF",
+			"elements": [
+				{
+					"name":"Speed",
+					"comment": "The speed of the vehicle.",
+					"datatype":"double",
+					"unit":"kph",
+					"byte":3,
+					"len":-2,
+					"scale":"0.00390625"
+				}
+			]
+		},
+		{
+			"name": "monitor-acceleration",
+			"comment": "Longitudinal Acceleration",
+			"id": "0x091",
+			"mask": "EFF",
+			"enabled":0,
+			"elements": [
+				{
+					"name": "Acceleration",
+					"comment": "The longitudinal acceleration of the vehicle",
+					"datatype": "double",
+					"unit": "m/s/s",
+					"byte": 0,
+					"len": 2,
+					"mask": "0x03FF",
+					"scale": 0.0478515625,
+					"adjust": -24.5
+				}
+			]
+		}
+	]
+}

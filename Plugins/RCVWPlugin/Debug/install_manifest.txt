@@ -1,2 +1,0 @@
-/media/sf_Shared/RCVW/Plugins/RCVWPlugin/Debug/_CPack_Packages/Linux/ZIP/RCVWPlugin-0.0.23/bin/RCVWPlugin
-/media/sf_Shared/RCVW/Plugins/RCVWPlugin/Debug/_CPack_Packages/Linux/ZIP/RCVWPlugin-0.0.23/./manifest.json

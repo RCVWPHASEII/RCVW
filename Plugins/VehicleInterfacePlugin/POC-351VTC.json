@@ -1,0 +1,15 @@
+{
+	"name": "POC-351VTC",
+	"revision": "20190603",
+	"comment": "Hardware settings for the Neousys POC-351VTC",
+	"drivers": [
+		{
+			"name": "WDT_DIO",
+			"type": "can",
+			"bitRate": 500000,
+			"recvConfig": 8,
+			"recvId": 0,
+			"recvMask": 0
+		}
+	]
+}

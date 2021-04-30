@@ -1,0 +1,12 @@
+{
+	"name": "CANSim",
+	"revision": "20190603",
+	"comment": "Controller Area Network simulation over a virtual interface",
+	"drivers": [
+		{
+			"name": "socketCAN",
+			"type": "can",
+			"bus": "vcan0"
+		}
+	]
+}

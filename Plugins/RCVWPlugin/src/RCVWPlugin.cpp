@@ -27,12 +27,15 @@
 #include <Intersection.h>
 #include <MapSupport.h>
 #include <ParsedMap.h>
+#include <VehicleBasicMessage.h>
+#include <TmxMessageManager.h>
 
 #include "HRILocation.h"
 #include <Conversions.h>
 #include <PluginDataMonitor.h>
 #include <FrequencyThrottle.h>
 #include <Clock.h>
+#include <GeoVector.h>
 
 using namespace std;
 using namespace tmx;
@@ -49,7 +52,7 @@ namespace RCVWPlugin
  * </summary>
  */
 
-class RCVWPlugin: public PluginClient
+class RCVWPlugin: public TmxMessageManager
 {
 public:
 	RCVWPlugin(std::string);
@@ -68,6 +71,7 @@ protected:
 	void HandleSpatMessage(SpatMessage &msg, routeable_message &routeableMsg);
 	void HandleRSAMessage(RsaMessage &msg, routeable_message &routeableMsg);
 	void HandleLocationMessage(LocationMessage &msg, routeable_message &routeableMsg);
+	void HandleVehicleBasicMessage(VehicleBasicMessage &msg, routeable_message &routeableMsg);
 
 	void HandleDataChangeMessage(DataChangeMessage &msg, routeable_message &routeableMsg);
 private:
@@ -85,7 +89,7 @@ private:
 	std::atomic<double> _distanceToHRI;
 	std::atomic<double> _irExtent;
 	std::atomic<double> _HRIWarningThresholdSpeed;
-	std::atomic<bool> _useDeceleration;
+	std::atomic<bool> _useCalculatedDeceleration;
 
 	DATA_MONITOR(_safetyOffset);
 	DATA_MONITOR(_reactionTime);
@@ -95,11 +99,20 @@ private:
 	std::atomic<double> _speed;
 	std::atomic<double> _prevSpeed;
 	std::atomic<double> _prevPrevSpeed;
+	std::atomic<uint64_t> _speedTime;
+	std::atomic<uint64_t> _prevSpeedTime;
+	std::atomic<double> _speedVBM;
+	std::atomic<double> _prevSpeedVBM;
+	std::atomic<double> _prevPrevSpeedVBM;
+	std::atomic<uint64_t> _speedTimeVBM;
+	std::atomic<uint64_t> _prevSpeedTimeVBM;
+	std::atomic<double> _heading;
+	std::atomic<double> _acceleration;
 	std::atomic<double> _horizontalDOP;
 	std::atomic<double> _mu; // Coefficient of friction, should probably use kinetic friction to be conservative
 	std::atomic<double> _weatherFactor;
-	std::atomic<uint64_t> _speedTime;
-	std::atomic<uint64_t> _prevSpeedTime;
+	std::atomic<double>  _lastCalculatedExpectedStopDistance;
+	std::atomic<double>  _lastCalculatedAcceleration;
 
 	DATA_MONITOR(_speed);
 	DATA_MONITOR(_mu);
@@ -107,8 +120,12 @@ private:
 	//Positioning Values
 	std::atomic<uint64_t> _lastLocation;
 	std::atomic<bool> _locationReceived;
+	std::atomic<bool> _rtkReceived;
+	std::atomic<bool> _locationProcessed;
 	std::atomic<double> _lat;
 	std::atomic<double> _long;
+	std::atomic<double> _altitude;
+	std::atomic<uint8_t> _rtkType;
 
 	//Map Data
 	std::atomic<uint64_t> _lastMap;
@@ -118,43 +135,101 @@ private:
 	std::atomic<uint64_t> _lastSpat;
 	SpatMessage _spatData;
 	std::atomic<bool> _preemption;
+	std::atomic<bool> _inLane;
 
-	//Warning Queue
-	std::atomic<uint64_t> _lastWarning;
-	std::atomic<bool> _enteredArea;
-	std::atomic<bool> _warningActive;
-	std::atomic<bool> _inHRIWarning;
-	std::atomic<bool> _inHRISevereWarning;
+	//VBM Data
+	std::atomic<uint64_t> _lastVBM;
 
-	DATA_MONITOR(_enteredArea);
-
+	//Warning Queue, lowest to highest priority
+	std::atomic<bool> _availableActive;
+	std::atomic<bool> _approachInformActive;
+	std::atomic<bool> _approachWarningActive;
+	std::atomic<bool> _hriWarningActive;
 	std::atomic<bool> _errorActive;
 
+	//other
 	std::atomic<double> _lastLoggedspeed;
+	string _lastLocationTime;
+	std::atomic<uint8_t> _stateErrorMessage;
+	std::atomic<uint8_t> _changeDirectionCount;
+
+	//V2
+	std::atomic<double> _v2AntennaPlacementXMeters;  //measured from front left corner
+	std::atomic<double> _v2AntennaPlacementYMeters;  //measured from front left corner
+	std::atomic<double> _v2AntennaHeightMeters;
+	std::atomic<double> _v2GPSErrorMeters;
+	std::atomic<double> _v2ReactionTimeSec;
+	std::atomic<double> _v2CommunicationLatencySec;
+	std::atomic<double> _v2ApplicationLatencySec;
+	std::atomic<double> _v2MinDecelerationCarMPSS;
+	std::atomic<double> _v2MinDecelerationLightTruckMPSS;
+	std::atomic<double> _v2MinDecelerationHeavyTruckMPSS;
+	std::atomic<uint64_t> _v2vehicleType;
+	std::atomic<double> _v2vehicleLength;
+	std::atomic<bool> _v2useVBMDeceleration;
+	std::atomic<bool> _v2LogSPAT;
+	std::atomic<uint64_t> _v2CriticalMessageExpiration;
+	std::atomic<bool> _v2UseConfigGrade;
+	std::atomic<double> _v2Grade;
+	std::atomic<bool> _v2CheckRTK;
+	std::atomic<bool> _v2CheckLocationFrequency;
+	std::atomic<uint64_t> _v2LocationFrequencySampleSize;
+	std::atomic<double> _v2MinumumLocationFrequency;
+	std::atomic<double> _v2LocationFrequencyTargetIntervalMS;
+	std::atomic<double> _v2LocationFrequencyCurrentIntervalMS;
+	std::atomic<uint64_t> _v2LocationFrequencyCount;
+	std::atomic<double> _v2MaxHeadingChange;
+	std::atomic<uint64_t> _v2MaxIgnoredPositions;
+
+	typedef enum V2VehicleTypeEnum
+	{
+		Car = 1,
+		LightTruck = 2,
+		HeavyTruck = 3
+	} V2VehicleType;
+
+	typedef enum V2RTKTypeEnum
+	{
+		NA = 0,
+		None = 1,
+		Float = 2,
+		Fixed = 3
+	} V2RTKType;
+
+	typedef enum V2StateErrorMessageEnum
+	{
+		NoError = 0,
+		MAP = 1,
+		SPAT = 2,
+		Location = 3,
+		Frequency = 4,
+		RTK = 5
+	} V2StateErrorMessage;
 
 	//Helper Functions
-	bool CheckForOnTrackWarning(double lat, double lon, double speed);
-	void CheckForErrorCondition(double lat, double lon);
+	void CheckForErrorCondition(double lat, double lon, bool frequencyError);
 	bool IsLocationInRangeOfEquippedHRI(double latitude, double longitude);
 	bool ParseHRILocationJson(cJSON *root);
 	uint64_t GetMsTimeSinceEpoch();
 	bool IsDecelerating();
-	bool InHRI(double lat, double lon);
+	bool InHRI(double lat, double lon, double speed, double heading);
 	//bool HRIPreemptionActive();
-	double GetDistanceToCrossing(double lat, double lon);
+	double GetDistanceToCrossing(double lat, double lon, double heading, double& grade);
 	double GetStoppingDistance(double speed, double friction, double incline);
+	double GetStoppingDistanceV2(double speed, double deceleration, double grade);
 	void AlertVehicle();
 	void AlertVehicle_2();
 
 	void SendApplicationMessage(tmx::messages::appmessage::EventCodeTypes, tmx::messages::appmessage::Severity, std::string = "", std::string = "", uint64_t = 0);
-	void SendApplicationActive();
-	void SendApplicationInactive();
-	void SendAlert();
-	void SendSevereAlert();
-	void SendAlertCleared();
-	void SendInHRIWarning();
-	void SendInHRISevereWarning();
-	void SendInHRIWarningAlertCleared();
+
+	void SendAvailable();
+	void SendAvailableCleared();
+	void SendApproachInform();
+	void SendApproachInformCleared();
+	void SendApproachWarning();
+	void SendApproachWarningCleared();
+	void SendHRIWarning();
+	void SendHRIWarningCleared();
 	void SendError(string message);
 	void SendErrorCleared();
 
@@ -165,11 +240,12 @@ private:
  *
  * @param name Name to identify the plugin instance
  */
-RCVWPlugin::RCVWPlugin(std::string name) : PluginClient(name)
+RCVWPlugin::RCVWPlugin(std::string name) : TmxMessageManager(name)
 {
 	//Initialize Atomics
+	_distanceToHRI = 480;
 	_safetyOffset = 0.0;
-	_messageExpiration = 6000;
+	_messageExpiration = 2000;
 	_speed = 0;
 	_horizontalDOP = 0;
 	_mu = 0.0;
@@ -180,17 +256,20 @@ RCVWPlugin::RCVWPlugin(std::string name) : PluginClient(name)
 	_long = 0.0;
 	_reactionTime = 1.0;
 	_HRIWarningThresholdSpeed = 1.0;
-	_useDeceleration = false;
+	_useCalculatedDeceleration = false;
 	_configSet = false;
 	_mapReceived = false;
 	_spatReceived = false;
 	_locationReceived = false;
-	_enteredArea = false;
-	_warningActive = false;
+	_rtkReceived = false;
+	_locationProcessed = true;
 	_preemption = false;
+	_inLane = false;
+	_availableActive = false;
+	_approachInformActive = false;
+	_approachWarningActive = false;
+	_hriWarningActive = false;
 	_errorActive = false;
-	_inHRIWarning=false;
-	_inHRISevereWarning= false;
 	_lastMap = 0;
 	_lastSpat = 0;
 	_lastLocation = 0;
@@ -198,6 +277,47 @@ RCVWPlugin::RCVWPlugin(std::string name) : PluginClient(name)
 	_lastLoggedspeed = -1;
 	_speedTime = 0;
 	_prevSpeedTime = 0;
+	_heading = 0;
+	_altitude = 0;
+	_acceleration = 0;
+	_lastCalculatedExpectedStopDistance = 999999;
+	_lastCalculatedAcceleration = 0;
+	_lastLocationTime = "";
+	_rtkType = V2RTKType::NA;
+	_stateErrorMessage = V2StateErrorMessage::NoError;
+	_changeDirectionCount = 0;
+	_speedVBM = 0;
+	_prevSpeedVBM = 0;
+	_prevPrevSpeedVBM = 0;
+	_speedTimeVBM = 0;
+	_prevSpeedTimeVBM = 0;
+
+	_v2AntennaPlacementXMeters = 0.5;
+	_v2AntennaPlacementYMeters = 2.5;
+	_v2AntennaHeightMeters = 1.5;
+	_v2GPSErrorMeters = 3.12;
+	_v2ReactionTimeSec = 2.5;
+	_v2CommunicationLatencySec = 0.3;
+	_v2ApplicationLatencySec = 0.085;
+	_v2MinDecelerationCarMPSS = 3.4;
+	_v2MinDecelerationLightTruckMPSS = 2.148;
+	_v2MinDecelerationHeavyTruckMPSS = 2.322;
+	_v2vehicleType = V2VehicleType::Car;
+	_v2vehicleLength = 4.8;
+	_v2useVBMDeceleration = true;
+	_v2LogSPAT = false;
+	_v2CriticalMessageExpiration = 500;
+	_v2UseConfigGrade = false;
+	_v2Grade = 0;
+	_v2CheckRTK = true;
+	_v2CheckLocationFrequency = true;
+	_v2LocationFrequencySampleSize = 10;
+	_v2MinumumLocationFrequency = 8.9;
+	_v2LocationFrequencyTargetIntervalMS = 1000.0 / _v2MinumumLocationFrequency;
+	_v2LocationFrequencyCurrentIntervalMS = 0.0;
+	_v2LocationFrequencyCount = 0;
+	_v2MaxHeadingChange = 90.0;
+	_v2MaxIgnoredPositions = 2;
 
 	//We want to listen for Map/Spat Messages
 	AddMessageFilter<MapDataMessage>(this, &RCVWPlugin::HandleMapDataMessage);
@@ -205,6 +325,7 @@ RCVWPlugin::RCVWPlugin(std::string name) : PluginClient(name)
 	AddMessageFilter<LocationMessage>(this, &RCVWPlugin::HandleLocationMessage);
 	AddMessageFilter<DataChangeMessage>(this, &RCVWPlugin::HandleDataChangeMessage);
 	AddMessageFilter<RsaMessage>(this, &RCVWPlugin::HandleRSAMessage);
+	AddMessageFilter<VehicleBasicMessage>(this, &RCVWPlugin::HandleVehicleBasicMessage);
 
 	SubscribeToMessages();
 }
@@ -230,7 +351,35 @@ void RCVWPlugin::UpdateConfigSettings()
 	GetConfigValue("Distance To HRI", _distanceToHRI);
 	GetConfigValue("Extended Intersection", _irExtent);
 	GetConfigValue("HRI Warning Threshold Speed", _HRIWarningThresholdSpeed);
-	GetConfigValue("Use Deceleration", _useDeceleration);
+	GetConfigValue("Use Calculated Deceleration", _useCalculatedDeceleration);
+
+	GetConfigValue("V2 Antenna Placement X", _v2AntennaPlacementXMeters);
+	GetConfigValue("V2 Antenna Placement Y", _v2AntennaPlacementYMeters);
+	GetConfigValue("V2 Antenna Height", _v2AntennaHeightMeters);
+	GetConfigValue("V2 GPS Error", _v2GPSErrorMeters);
+	GetConfigValue("V2 Reaction Time", _v2ReactionTimeSec);
+	GetConfigValue("V2 Communication Latency", _v2CommunicationLatencySec);
+	GetConfigValue("V2 Application Latency", _v2ApplicationLatencySec);
+	GetConfigValue("V2 Deceleration Car", _v2MinDecelerationCarMPSS);
+	GetConfigValue("V2 Deceleration Light Truck", _v2MinDecelerationLightTruckMPSS);
+	GetConfigValue("V2 Deceleration Heavy Truck", _v2MinDecelerationHeavyTruckMPSS);
+	GetConfigValue("V2 Vehicle Type", _v2vehicleType);
+	GetConfigValue("V2 Vehicle Length", _v2vehicleLength);
+	GetConfigValue("V2 Use VBM Deceleration", _v2useVBMDeceleration);
+	GetConfigValue("V2 Log SPAT", _v2LogSPAT);
+	GetConfigValue("V2 Critical Message Expiration", _v2CriticalMessageExpiration);
+	GetConfigValue("V2 Use Config Grade", _v2UseConfigGrade);
+	GetConfigValue("V2 Grade", _v2Grade);
+	GetConfigValue("V2 Check RTK", _v2CheckRTK);
+	GetConfigValue("V2 Check Location Frequency", _v2CheckLocationFrequency);
+	GetConfigValue("V2 Location Frequency Sample Size", _v2LocationFrequencySampleSize);
+	GetConfigValue("V2 Minimum Location Frequency", _v2MinumumLocationFrequency);
+	GetConfigValue("V2 Max Heading Change", _v2MaxHeadingChange);
+	GetConfigValue("V2 Max Ignored Positions", _v2MaxIgnoredPositions);
+
+	_v2LocationFrequencyTargetIntervalMS = 1000.0 / _v2MinumumLocationFrequency;
+	_v2LocationFrequencyCurrentIntervalMS = 0;
+	_v2LocationFrequencyCount = 0;
 
 	string rawHRILocations;
 	GetConfigValue<string>("HRI Locations", rawHRILocations);
@@ -264,7 +413,7 @@ void RCVWPlugin::UpdateConfigSettings()
  */
 void RCVWPlugin::OnConfigChanged(const char *key, const char *value)
 {
-	PluginClient::OnConfigChanged(key, value);
+	TmxMessageManager::OnConfigChanged(key, value);
 	UpdateConfigSettings();
 }
 
@@ -275,15 +424,16 @@ void RCVWPlugin::OnConfigChanged(const char *key, const char *value)
  */
 void RCVWPlugin::OnStateChange(IvpPluginState state)
 {
-	PluginClient::OnStateChange(state);
+	TmxMessageManager::OnStateChange(state);
 
 	if (IvpPluginState::IvpPluginState_registered == state)
 	{
 		UpdateConfigSettings();
 		SetStatus("HRI", "Not Present");
-		SetStatus("Warning", "Not Active");
+		//SetStatus("Warning", "Not Active");
 		SetStatus("Map Received", false);
 		SetStatus("Location Received", false);
+		SetStatus("RTK Type", "");
 		SetStatus("Spat Received", false);
 		SetStatus("Near Active HRI", "");
 	}
@@ -293,8 +443,8 @@ void RCVWPlugin::OnStateChange(IvpPluginState state)
 void RCVWPlugin::HandleMapDataMessage(MapDataMessage &msg,
 			routeable_message &routeableMsg)
 {
-	int newIntersectionId = msg.get<int>("MapData.intersections.IntersectionGeometry.id.id", -1);
-
+	//int newIntersectionId = msg.get<int>("MapData.intersections.IntersectionGeometry.id.id", -1);
+	int newIntersectionId = msg.get_j2735_data()->intersections->list.array[0]->id.id;
 	PLOG(logDEBUG1) << "MAP Received, IntersectionID: " << newIntersectionId;
 
 	if(!_mapReceived)
@@ -305,19 +455,21 @@ void RCVWPlugin::HandleMapDataMessage(MapDataMessage &msg,
 
 		WGS84Point location(_lat, _long);
 
-		MapSupport mapSupp;
+		//MapSupport mapSupp;
+		//MapMatchResult r = mapSupp.FindVehicleLaneForPoint(location, intersection.Map);
 
-		MapMatchResult r = mapSupp.FindVehicleLaneForPoint(location, intersection.Map);
+		if (!_mapReceived.exchange(true))
+			SetStatus("Map Received", true);
+
+		_lastMap = GetMsTimeSinceEpoch();
 
 		std::lock_guard<mutex> lock(_dataLock);
 		_mapData = msg;
-		_lastMap = GetMsTimeSinceEpoch();
-		_mapReceived = true;
-		SetStatus("Map Received", true);
 	}
 	else
 	{
-		int oldIntersectionId = _mapData.get<int>("MapData.intersections.IntersectionGeometry.id.id", -1);
+		//int oldIntersectionId = _mapData.get<int>("MapData.intersections.IntersectionGeometry.id.id", -1);
+		int oldIntersectionId = _mapData.get_j2735_data()->intersections->list.array[0]->id.id;
 		if(newIntersectionId == oldIntersectionId)
 		{
 			_lastMap = GetMsTimeSinceEpoch();
@@ -330,26 +482,57 @@ void RCVWPlugin::HandleMapDataMessage(MapDataMessage &msg,
 
 void RCVWPlugin::HandleSpatMessage(SpatMessage &msg, routeable_message &routeableMsg)
 {
-	int spatInterId = msg.get<int>("SPAT.intersections.IntersectionState.id.id", -1);
 
+//	if(_mapReceived)
+//	{
+//		MapDataMessage mapCopy;
+//		{
+//			std::lock_guard<mutex> lock(_dataLock);
+//			mapCopy  = _mapData;
+//		}
+//
+//		Intersection intersection;
+//		if(intersection.LoadMap(mapCopy))
+//		{
+//			if(intersection.DoesSpatMatchMap(msg))
+//			{
+//				if(!_spatReceived)
+//				{
+//					SetStatus("Spat Received", true);
+//				}
+//				_spatReceived = true;
+//				_lastSpat = GetMsTimeSinceEpoch();
+//				std::lock_guard<mutex> lock(_dataLock);
+//				_spatData = msg;
+//
+//			}
+//		}
+//
+//	}
+
+
+	//int spatInterId = msg.get<int>("SPAT.intersections.IntersectionState.id.id", -1);
+	int spatInterId = msg.get_j2735_data()->intersections.list.array[0]->id.id;
 	PLOG(logDEBUG1) << "SPAT Received, IntersectionID: " << spatInterId;
 
 	if(_mapReceived)
 	{
-		int intersectionId = _mapData.get<int>("MapData.intersections.IntersectionGeometry.id.id", -1);
-
+		//int intersectionId = _mapData.get<int>("MapData.intersections.IntersectionGeometry.id.id", -1);
+		int intersectionId = _mapData.get_j2735_data()->intersections->list.array[0]->id.id;
 		if(intersectionId  == spatInterId)
 		{
-			if(!_spatReceived)
-			{
+			if(!_spatReceived.exchange(true))
 				SetStatus("Spat Received", true);
-			}
-			_spatReceived = true;
+
 			_lastSpat = GetMsTimeSinceEpoch();
+
 			std::lock_guard<mutex> lock(_dataLock);
 			_spatData = msg;
+			if (_v2LogSPAT)
+				PLOG(logDEBUG) << "SPAT Received: " << msg;
 		}
 	}
+
 }
 
 void RCVWPlugin::HandleRSAMessage(RsaMessage &msg, routeable_message &routeableMsg)
@@ -379,8 +562,8 @@ void RCVWPlugin::HandleDataChangeMessage(DataChangeMessage &msg, routeable_messa
 
 	string name = field.substr(1); 	// Truncate the underscore
 
-	SendApplicationMessage(EventCodeTypes::NOEVENTID, Severity::Info,
-			name + " value changed to " + msg.get_untyped(msg.NewValue, "?"), name, routeableMsg.get_timestamp());
+	//SendApplicationMessage(EventCodeTypes::NOEVENTID, Severity::Info,
+	//		name + " value changed to " + msg.get_untyped(msg.NewValue, "?"), name, routeableMsg.get_timestamp());
 }
 
 /**
@@ -392,21 +575,179 @@ void RCVWPlugin::HandleDataChangeMessage(DataChangeMessage &msg, routeable_messa
  */
 void RCVWPlugin::HandleLocationMessage(LocationMessage &msg, routeable_message &routeableMsg)
 {
+	uint64_t locationInterval = 0;
+	double frequency = 0.0;
+	location::SignalQualityTypes signalQuality;
+	std::lock_guard<mutex> lock(_locationLock);
+	string rtkType = "none";
+	double heading;
+	double headingChange = 0;
+	double tmp_double;
+	uint64_t tmp_uint64_t;
+	//check if this is a duplicate or old position data
+	if (msg.get_Time() <= _lastLocationTime)
+		return;
+	_lastLocationTime = msg.get_Time();
 	if(!_locationReceived)
 	{
 		SetStatus("Location Received", true);
 	}
-	std::lock_guard<mutex> lock(_locationLock);
+	uint64_t currentTime = GetMsTimeSinceEpoch();
+	uint64_t locationTime = std::stoull(msg.get_Time());
 	_locationReceived = true;
-	_lastLocation = GetMsTimeSinceEpoch();
-	_prevPrevSpeed.exchange(_prevSpeed);
-	_prevSpeed.exchange(_speed);
-	_speed = msg.get_Speed_kph() / 3.6; // convert the speed from kph to m/s
-	_horizontalDOP = msg.get_HorizontalDOP();
-	_lat = msg.get_Latitude();
-	_long = msg.get_Longitude();
-	_prevSpeedTime.exchange(_speedTime);
-	_speedTime = GetMsTimeSinceEpoch();
+	locationInterval = locationTime - _lastLocation;
+	_lastLocation = locationTime;
+
+	//if its been out for more than twice the critical message timer then restart the sampling
+	if (locationInterval > 2 * _v2CriticalMessageExpiration)
+	{
+		_v2LocationFrequencyCount = 0;
+		_v2LocationFrequencyCurrentIntervalMS = 0.0;
+	}
+
+	//calculate running average interval between location messages
+	//always have one less sampling interval than the sample size of messages
+	if (_v2LocationFrequencyCount < _v2LocationFrequencySampleSize)
+	{
+		//skip calculations for first point
+		if (_v2LocationFrequencyCount > 0)
+		{
+			_v2LocationFrequencyCurrentIntervalMS = ((_v2LocationFrequencyCount - 1) * _v2LocationFrequencyCurrentIntervalMS) + locationInterval;
+			_v2LocationFrequencyCurrentIntervalMS = _v2LocationFrequencyCurrentIntervalMS / _v2LocationFrequencyCount;
+		}
+		_v2LocationFrequencyCount++;
+	}
+	else
+	{
+		_v2LocationFrequencyCurrentIntervalMS = ((_v2LocationFrequencyCount - 2) * _v2LocationFrequencyCurrentIntervalMS) + locationInterval;
+		_v2LocationFrequencyCurrentIntervalMS = _v2LocationFrequencyCurrentIntervalMS / (_v2LocationFrequencyCount - 1);
+	}
+
+	//calculate heading change
+	heading = _heading;
+	if (msg.get_Heading() > heading)
+		headingChange = msg.get_Heading() - heading;
+	else
+		headingChange = heading - msg.get_Heading();
+	//if heading changed more than (configured) degrees then throw point out, only do it (configured) in a row
+	if (_changeDirectionCount < _v2MaxIgnoredPositions && headingChange > _v2MaxHeadingChange)
+	{
+		//keep previous location data except for time
+		if (currentTime - _lastVBM > _v2CriticalMessageExpiration)
+		{
+			//use location data
+			_prevSpeedTime.exchange(_speedTime);
+			_speedTime = currentTime;
+		}
+		else
+		{
+			//use last saved VBM data
+			tmp_uint64_t = _prevSpeedTimeVBM;
+			_prevSpeedTime = tmp_uint64_t;
+			tmp_uint64_t = _speedTimeVBM;
+			_speedTime = tmp_uint64_t;
+		}
+		_changeDirectionCount++;
+	}
+	else
+	{
+		//use location message speed if haven't received VBM in expiration interval
+		if (currentTime - _lastVBM > _v2CriticalMessageExpiration)
+		{
+			//use location data
+			_prevPrevSpeed.exchange(_prevSpeed);
+			_prevSpeed.exchange(_speed);
+			_speed = msg.get_Speed_mps();
+			_prevSpeedTime.exchange(_speedTime);
+			_speedTime = currentTime;
+		}
+		else
+		{
+			//use last saved VBM data
+			tmp_double = _prevPrevSpeedVBM;
+			_prevPrevSpeed = tmp_double;
+			tmp_double = _prevSpeedVBM;
+			_prevSpeed = tmp_double;
+			tmp_double = _speedVBM;
+			_speed = tmp_double;
+			tmp_uint64_t = _prevSpeedTimeVBM;
+			_prevSpeedTime = tmp_uint64_t;
+			tmp_uint64_t = _speedTimeVBM;
+			_speedTime = tmp_uint64_t;
+		}
+		_horizontalDOP = msg.get_HorizontalDOP();
+		_lat = msg.get_Latitude();
+		_long = msg.get_Longitude();
+		//change heading only if speed is not zero
+		if (_speed != 0)
+			_heading = msg.get_Heading();
+		_altitude = msg.get_Altitude();
+		_changeDirectionCount = 0;
+	}
+
+	//check location message for RTK fix
+	signalQuality = msg.get_SignalQuality();
+	if (signalQuality == location::SignalQualityTypes::RealTimeKinematic)
+	{
+		_rtkReceived = true;
+		if (_rtkType != V2RTKType::Fixed)
+			SetStatus("RTK Type", "Fixed");
+		_rtkType = V2RTKType::Fixed;
+		rtkType = "fixed";
+	}
+	else if (signalQuality == location::SignalQualityTypes::FloatRTK)
+	{
+		_rtkReceived = true;
+		if (_rtkType != V2RTKType::Float)
+			SetStatus("RTK Type", "Float");
+		_rtkType = V2RTKType::Float;
+		rtkType = "float";
+	}
+	else
+	{
+		_rtkReceived = false;
+		if (_rtkType != V2RTKType::None)
+			SetStatus("RTK Type", "None");
+		_rtkType = V2RTKType::None;
+		rtkType = "none";
+	}
+
+	_locationProcessed = false;
+	if (_v2LocationFrequencyCurrentIntervalMS != 0)
+		frequency = 1000.0 / _v2LocationFrequencyCurrentIntervalMS;
+	else
+		frequency = 0.0;
+	//PLOG(logDEBUG) << "LOC Id, MsgTime, CurTime: " <<  msg.get_Id() << ", " << msg.get_Time() << ", " << currentTime;
+	heading = msg.get_Heading();
+	PLOG(logDEBUG) << std::setprecision(6) << "LOC TIME, LOC SPEED, LOC HEADING, SPEED, HEADING, RTK, FREQUENCY: " <<  msg.get_Time() << ", " <<  msg.get_Speed_mps() << ", " << heading << ", " << _speed << ", " << _heading << ", " << rtkType << ", " << frequency;
+	if (_changeDirectionCount > 0)
+		PLOG(logDEBUG) << "LOC change ignored count: " <<  (int)_changeDirectionCount;
+
+	// Throttle checks to twice a second
+	static FrequencyThrottle<string> throttle(chrono::milliseconds(500));
+	if (throttle.Monitor(__speed_mon.get_name()))
+		__speed_mon.check();
+}
+
+/**
+ * Handles location messages as they are received and extracts
+ * the needed information.
+ *
+ * @param msg The decoded version of the LocationMessage.
+ * @param routeableMsg the encoded version of the message routed by TMX
+ */
+void RCVWPlugin::HandleVehicleBasicMessage(VehicleBasicMessage &msg, routeable_message &routeableMsg)
+{
+	std::lock_guard<mutex> lock(_locationLock);
+	uint64_t currentTime = GetMsTimeSinceEpoch();
+	_lastVBM = currentTime;
+	_prevPrevSpeedVBM.exchange(_prevSpeedVBM);
+	_prevSpeedVBM.exchange(_speedVBM);
+	_speedVBM = msg.get_Speed_mps();
+	_prevSpeedTimeVBM.exchange(_speedTimeVBM);
+	_speedTimeVBM = currentTime;
+	_acceleration = msg.get_Acceleration();
+	PLOG(logDEBUG) << std::setprecision(10) << "VBM SPEED, VBM ACCELERATION: " <<  _speedVBM << ", " << _acceleration;
 
 	// Throttle checks to twice a second
 	static FrequencyThrottle<string> throttle(chrono::milliseconds(500));
@@ -421,9 +762,13 @@ void RCVWPlugin::HandleLocationMessage(LocationMessage &msg, routeable_message &
  *
  * @return true if the vehicle is currently in the HRI, false otherwise.
  */
-bool RCVWPlugin::InHRI(double lat, double lon)
+bool RCVWPlugin::InHRI(double lat, double lon, double speed, double heading)
 {
 	MapDataMessage mapCopy;
+	WGS84Point front;
+	WGS84Point back;
+	double backwardsHeading;
+
 	{
 		std::lock_guard<mutex> lock(_dataLock);
 		mapCopy  = _mapData;
@@ -446,6 +791,24 @@ bool RCVWPlugin::InHRI(double lat, double lon)
 	if(r.LaneNumber==0){
 		return true;
 	}
+
+	//check front and back of vehicle
+	//calculate front and back points
+	front = GeoVector::DestinationPoint(location, heading, _v2AntennaPlacementYMeters);
+	backwardsHeading = heading + 180.0;
+	if (backwardsHeading >= 360.0)
+		backwardsHeading -= 360.0;
+	back = GeoVector::DestinationPoint(location, backwardsHeading, _v2vehicleLength - _v2AntennaPlacementYMeters);
+	//check points
+	r = mapSupp.FindVehicleLaneForPoint(front, intersection.Map);
+	if(r.LaneNumber==0){
+		return true;
+	}
+	r = mapSupp.FindVehicleLaneForPoint(back, intersection.Map);
+	if(r.LaneNumber==0){
+		return true;
+	}
+
 	return false;
 }
 
@@ -487,7 +850,7 @@ bool RCVWPlugin::InHRI(double lat, double lon)
 //		//Check all three types of lanes that stand for vehicle lanes.
 //		if (i->Type == Vehicle || i->Type == Computed || i->Type == Egress)
 //		{
-//			if(!intersection.IsSignalForGroupRedLight(signalGroup, spatCopy, spatSeg))
+//			if(!intersection.IsSignalForGroupRedLight(spatCopy, signalGroup))
 //			{
 //			}
 //		}
@@ -501,7 +864,7 @@ bool RCVWPlugin::InHRI(double lat, double lon)
  *
  * @return distance to the crossing in meters, -1 indicates that the vehicle is not in a lane.
  */
-double RCVWPlugin::GetDistanceToCrossing(double lat, double lon)
+double RCVWPlugin::GetDistanceToCrossing(double lat, double lon, double heading, double& grade)
 {
 	MapDataMessage mapCopy;
 	SpatMessage spatCopy;
@@ -519,7 +882,25 @@ double RCVWPlugin::GetDistanceToCrossing(double lat, double lon)
 
 	MapSupport mapSupp;
 
-	MapMatchResult r = mapSupp.FindVehicleLaneForPoint(location, intersection.Map);
+	MapMatchResult r = mapSupp.FindVehicleLaneForPoint(location, heading, intersection.Map);
+	//check if not in map
+	if (r.LaneNumber == -1)
+	{
+		//not in lane or map
+		if (_preemption)
+			SetStatus("HRI", "Not Present");
+		_preemption = false;
+		_inLane = false;
+		return -1;
+	}
+	if (r.LaneNumber > 0)
+	{
+		_inLane = true;
+	}
+	else
+	{
+		_inLane = false;
+	}
 
 	// Check to see if SPAT and MAP intersection Ids match.
 	if(!intersection.DoesSpatMatchMap(spatCopy))
@@ -529,24 +910,45 @@ double RCVWPlugin::GetDistanceToCrossing(double lat, double lon)
 
 	int signalGroup = mapSupp.GetSignalGroupForVehicleLane(r.LaneNumber, intersection.Map);
 
+	PLOG(logDEBUG) << "Lane, SignalGroup = " << r.LaneNumber << ", " << signalGroup;
 	std::string spatSeg = "";
-	if(!intersection.IsSignalForGroupRedLight(signalGroup, spatCopy, spatSeg))
+
+	if(!intersection.IsSignalForGroupRedLight(spatCopy, signalGroup))
 	{
+		if (_preemption)
+			SetStatus("HRI", "Not Present");
 		_preemption = false;
 	}
 	else
 	{
+		if (!_preemption)
+			SetStatus("HRI", "Present");
 		_preemption = true;
 	}
 
 	int laneSegment = r.LaneSegment;
 
-	if(r.IsInLane == false || r.LaneNumber < 0 || laneSegment < 1)
+	if((r.IsInLane == false && r.IsNearLane == false) || r.LaneNumber < 0 || laneSegment < 1 || r.IsEgress)
 	{
+		_inLane = false;
 		return -1;
 	}
 
-	PLOG(logDEBUG1) << "IsInLane: " << r.IsInLane << ", LaneNumber: " << r.LaneNumber << ", LaneSegment: " << r.LaneSegment;
+	if (_v2UseConfigGrade)
+	{
+		grade = _v2Grade;
+	}
+	else
+	{
+		grade = r.Grade;
+	}
+	PLOG(logDEBUG) << "IsInLane: " << r.IsInLane << ", IsNearLane: " << r.IsNearLane << ", LaneNumber: " << r.LaneNumber << ", LaneSegment: " << r.LaneSegment << ", Grade: " << grade;
+
+	//!!!!!!!!!!!!!!!!!!!!!!
+	//FOR TESTING ONLY
+	//!!!!!!!!!!!!!!!!!!!!!!
+	//_preemption = true;
+
 
 	// Calculate the distance to the crossing on a node by node basis
 	// to account for curves when approaching the intersection.
@@ -617,6 +1019,31 @@ double RCVWPlugin::GetStoppingDistance(double speed, double friction, double inc
 }
 
 /**
+ * Function to calculate the stopping distance needed based on
+ * the current speed of the vehicle.
+ *
+ * @param speed The current speed of the vehicle in m/s
+ * @param deceleration The min deceleration for this vehicle in m/s^2
+ * @param grade rise/run
+ *
+ * @return The distance needed to stop in meters
+ */
+double RCVWPlugin::GetStoppingDistanceV2(double speed, double deceleration, double grade)
+{
+	double distance = 0.0;
+	//if the vehicle is not moving (speed is zero which it should be with speed clamping) then return zero
+	if (speed == 0.0)
+		return distance;
+	double v = units::Convert<units::Speed, units::Speed::mps, units::Speed::kph>(speed); //change to kph for formula
+	double t = _v2ReactionTimeSec + _v2CommunicationLatencySec + _v2ApplicationLatencySec;
+	distance = _v2AntennaPlacementYMeters + _v2GPSErrorMeters + (0.278 * v * t) +
+			((v * v) / (254 * ((deceleration / 9.81) + grade)));
+	return distance;
+}
+
+
+
+/**
  * Function determines if the vehicle is decelerating based on
  * the data received from the location messages.
  *
@@ -653,186 +1080,78 @@ void RCVWPlugin::SendApplicationMessage(EventCodeTypes eventCode, Severity sev, 
 	BroadcastMessage(msg);
 }
 
-/**
- * Function executes the appropriate logic to
- * display that the system is active based on the
- * configured output interface
+/*
+ * Send messages to UI
  */
-void RCVWPlugin::SendApplicationActive()
+
+
+void RCVWPlugin::SendAvailable()
 {
-	SetStatus("HRI", "Present");
-	PLOG(logDEBUG) << "Sending Application Message: Application Active";
-	SendApplicationMessage(EventCodeTypes::ApplicationActive, Severity::Info, "Application Active");
+	PLOG(logDEBUG) << "Sending Application Message: Available";
+	SetStatus("Available", "Active");
+	SendApplicationMessage(EventCodeTypes::RCVW2Available, Severity::Inform);
 }
-
-/**
- * Function executes the appropriate logic to
- * set the system to inactive based on the
- * configured output interface
- */
-void RCVWPlugin::SendApplicationInactive()
+void RCVWPlugin::SendAvailableCleared()
 {
-	SetStatus("HRI", "Not Present");
-	SetStatus("Warning", "Not Active");
-	PLOG(logDEBUG) << "Sending Application Message: Application Inactive";
-	SendApplicationMessage(EventCodeTypes::ApplicationInactive, Severity::Info, "Application Inactive");
+	PLOG(logDEBUG) << "Sending Application Message: Clear Available";
+	SetStatus("Available", "");
+	SendApplicationMessage(EventCodeTypes::RCVW2Available, Severity::Info);
 }
-
-/**
- * Function executes the appropriate logic to alert the
- * driver based on the configured output interface.
- */
-void RCVWPlugin::SendAlert()
+void RCVWPlugin::SendApproachInform()
 {
-	PLOG(logDEBUG) << "Sending Application Message: Rail Crossing Violation Warning";
-	SetStatus("Warning", "Active");
-	SendApplicationMessage(EventCodeTypes::RCVWAlert, Severity::Inform, "RCVW");
+	PLOG(logDEBUG) << "Sending Application Message: ApproachInform";
+	SetStatus("ApproachInform", "Active");
+	SendApplicationMessage(EventCodeTypes::RCVW2ApproachInform, Severity::Inform);
 }
-
-/**
- * Function executes the appropriate logic to alert the
- * driver based on the configured output interface.
- */
-void RCVWPlugin::SendSevereAlert()
+void RCVWPlugin::SendApproachInformCleared()
 {
-	PLOG(logDEBUG) << "Sending Application Message: Rail Crossing Violation Warning - Severe";
-	SetStatus("Warning", "Active-Severe");
-	SendApplicationMessage(EventCodeTypes::RCVWAlert, Severity::Warning, "RCVW");
+	PLOG(logDEBUG) << "Sending Application Message: Clear ApproachInform";
+	SetStatus("ApproachInform", "");
+	SendApplicationMessage(EventCodeTypes::RCVW2ApproachInform, Severity::Info);
 }
-
-/**
- * Function executes the appropriate logic to clear the alert
- * due to the driver reacting to the alert based on the configured
- * output interface.
- */
-void RCVWPlugin::SendAlertCleared()
+void RCVWPlugin::SendApproachWarning()
 {
-	PLOG(logDEBUG) << "Sending Application Message: Clear Rail Crossing Violation Warning";
-	SetStatus("Warning", "RCVW Not Active");
-	SendApplicationMessage(EventCodeTypes::RCVWAlert, Severity::Info);
+	PLOG(logDEBUG) << "Sending Application Message: ApproachWarning";
+	SetStatus("ApproachWarning", "Active");
+	SendApplicationMessage(EventCodeTypes::RCVW2ApproachWarning, Severity::Inform);
 }
-
-void RCVWPlugin::SendInHRIWarning()
+void RCVWPlugin::SendApproachWarningCleared()
 {
-	PLOG(logDEBUG) << "Sending Application Message: Stopped In HRI Warning";
-	SetStatus("Warning", "In HRI Warning Active");
-	SendApplicationMessage(EventCodeTypes::RCVWWarning, Severity::Inform, "Stopped in HRI");
+	PLOG(logDEBUG) << "Sending Application Message: Clear ApproachWarning";
+	SetStatus("ApproachWarning", "");
+	SendApplicationMessage(EventCodeTypes::RCVW2ApproachWarning, Severity::Info);
 }
-
-void RCVWPlugin::SendInHRISevereWarning()
+void RCVWPlugin::SendHRIWarning()
 {
-	PLOG(logDEBUG) << "Sending Application Message: Stopped In HRI Warning - Severe";
-	SetStatus("Warning", "In HRI Warning Active-Severe");
-	SendApplicationMessage(EventCodeTypes::RCVWWarning, Severity::Warning, "Stopped in HRI");
+	PLOG(logDEBUG) << "Sending Application Message: HRIWarning";
+	SetStatus("HRIWarning", "Active");
+	SendApplicationMessage(EventCodeTypes::RCVW2HRIWarning, Severity::Inform);
 }
-
-void RCVWPlugin::SendInHRIWarningAlertCleared()
+void RCVWPlugin::SendHRIWarningCleared()
 {
-	PLOG(logDEBUG) << "Sending Application Message: Clear Stopped In HRI Warning";
-	SetStatus("Warning", "In HRI Warning Active");
-	SendApplicationMessage(EventCodeTypes::RCVWWarning, Severity::Info);
+	PLOG(logDEBUG) << "Sending Application Message: Clear HRIWarning";
+	SetStatus("HRIWarning", "");
+	SendApplicationMessage(EventCodeTypes::RCVW2HRIWarning, Severity::Info);
 }
-
-
-/**
- * Function executes that appropriate logic to report an error
- * in the current location data to the driver
- */
 void RCVWPlugin::SendError(string message)
 {
 	PLOG(logDEBUG) << "Sending Application Message: Error: " << message;
-	SetStatus("Warning", "Error: " + message);
-	SendApplicationMessage(EventCodeTypes::ERROR, Severity::Inform, message);
+	SetStatus("Error", "Active: " + message);
+	SendApplicationMessage(EventCodeTypes::RCVW2Error, Severity::Inform, message);
 }
-
 void RCVWPlugin::SendErrorCleared()
 {
 	PLOG(logDEBUG) << "Sending Application Message: Clear Error";
-	SetStatus("Warning", "");
-	SendApplicationMessage(EventCodeTypes::ERROR, Severity::Info);
+	SetStatus("Error", "");
+	SendApplicationMessage(EventCodeTypes::RCVW2Error, Severity::Info);
 }
-
-bool RCVWPlugin::CheckForOnTrackWarning(double lat, double lon, double speed)
-{
-	if(speed <= _HRIWarningThresholdSpeed && InHRI(lat, lon))
-	{
-		if(!_inHRISevereWarning)
-		{
-			uint64_t curTime = GetMsTimeSinceEpoch();
-			if(curTime - _lastWarning > 2000)
-			{
-				PLOG(logDEBUG) << "Send In HRI Severe Warning";
-
-				_inHRISevereWarning = true;
-				SendInHRISevereWarning();
-
-				_lastWarning = GetMsTimeSinceEpoch();
-			}
-		}
-		return true;
-	}
-	else
-	{
-		if(_inHRISevereWarning)
-		{
-			SetStatus("InHRI", "No");
-			_inHRISevereWarning = false;
-			PLOG(logDEBUG) << "Clear In HRI Severe Warning";
-			SendInHRIWarningAlertCleared();
-		}
-		return false;
-	}
-
-//	if(_speed == 0.0 && InHRI())
-//	{
-//		if(!_inHRIWarning)
-//		{
-//			SetStatus("InHRI", "Yes");
-//			_inHRIWarning = true;
-//
-//			_inHRISevereWarning = false;
-//			_lastWarning = GetMsTimeSinceEpoch();
-//
-//			PLOG(logDEBUG) << "Send In HRI Warning";
-//			SendInHRIWarning();
-//		}
-//		else if(!_inHRISevereWarning)
-//		{
-//			uint64_t curTime = GetMsTimeSinceEpoch();
-//
-//			if(curTime - _lastWarning > 2000)
-//			{
-//				PLOG(logDEBUG) << "Send In HRI Severe Warning";
-//
-//				_inHRISevereWarning = true;
-//				SendInHRISevereWarning();
-//
-//				_lastWarning = GetMsTimeSinceEpoch();
-//			}
-//		}
-//		return true;
-//	}
-//	else
-//	{
-//		if(_inHRIWarning)
-//		{
-//			SetStatus("InHRI", "No");
-//			_inHRIWarning = false;
-//			_inHRISevereWarning = false;
-//			PLOG(logDEBUG) << "Clear In HRI Warning";
-//			SendInHRIWarningAlertCleared();
-//		}
-//		return false;
-//	}
-}
-
 
 
 
 void RCVWPlugin::AlertVehicle_2()
 {
 	bool logCalculations = false;
-
+	bool checkDeceleration = false;
 	double speed;
 	double prevSpeed;
 	uint64_t speedTime;
@@ -840,6 +1159,13 @@ void RCVWPlugin::AlertVehicle_2()
 	double lat;
 	double lon;
 	double hdop;
+	double grade = 0;
+	bool inHRI = false;
+	uint64_t lastVBM;
+	uint64_t v2CriticalMessageExpiration;
+	bool locationProcessed;
+
+	float heading;
 	{
 		std::lock_guard<mutex> lock(_locationLock);
 		speed = _speed;
@@ -849,276 +1175,178 @@ void RCVWPlugin::AlertVehicle_2()
 		prevSpeedTime = _prevSpeedTime;
 		lat = _lat;
 		lon = _long;
+		heading = _heading;
+		lastVBM = _lastVBM;
+		v2CriticalMessageExpiration = _v2CriticalMessageExpiration;
+		locationProcessed = _locationProcessed;
+		_locationProcessed = true;
 	}
-	//log data and calculations only if vehicle is not stopped (greater than threshold speed)
-	if (_lastLoggedspeed > (_HRIWarningThresholdSpeed / 2.0) || speed > (_HRIWarningThresholdSpeed / 2.0))
-	{
-		PLOG(logDEBUG) << "Latitude: " << lat << ", Longitude: " << lon << ", Speed: " << speed << ", PrevSpeed: " << prevSpeed << ", HDOP: " << hdop << ", Preemption: " << _preemption;
-		double lastLoggedspeed = speed;
-		_lastLoggedspeed = lastLoggedspeed;
-		logCalculations = true;
-	}
+
+	//if we have already processed this location then skip processing
+	if (locationProcessed)
+		return;
+
+	uint64_t currentTime = GetMsTimeSinceEpoch();
 
 	//calculate crossing distance, safe stopping distance, and set preemption
 	//crossing distance = -1 if not in a lane
 
-	double mu = _mu * _weatherFactor;
-	double safetyStopDistance = GetStoppingDistance(speed, mu, 0.0) * _safetyOffset;
-	double crossingDistance = GetDistanceToCrossing(lat, lon);
-	double expectedStopDistance = 0;
-	double acceleration;
+	double crossingDistance = GetDistanceToCrossing(lat, lon, heading, grade);
 
-	//calculate acceleration
-	if(speed < prevSpeed)
+	//log data and calculations only if vehicle is not stopped (with location plugin latching we should get a zero speed)
+	//log the data after the GetDistanceToCrossing call because _preemption is set there
+	if (_lastLoggedspeed > 0 || speed > 0)
 	{
-		//calculate expected stop distance due to deceleration
-		acceleration = (speed - prevSpeed) / (((double)(speedTime - prevSpeedTime)) / 1000);
-		expectedStopDistance = (-1 * (speed * speed)) / (2 * acceleration);
-		PLOG(logDEBUG) << "SpeedTime: " << speedTime << ", PrevSpeedTime: " << prevSpeedTime <<  ", Acceleration: " << acceleration;
-	}
-
-	if (logCalculations)
-	{
-		PLOG(logDEBUG) << "VSE: " << _mu << ", WeatherFactor: " << _weatherFactor <<  ", ReactionTime: " << _reactionTime;
-		PLOG(logDEBUG) << "CrossingDistance: " << crossingDistance << ", SafetyStopDistance: " << safetyStopDistance << ", ExpectedStopDistance: " << expectedStopDistance;
-	}
-
-	if (!_enteredArea)
-	{
-		//not active
-		if (InHRI(lat, lon) || _preemption)
-		{
-			//vehicle is in HRI or in a lane with preemption
-			//activate
-			_enteredArea = true;
-			SendApplicationActive();
-		}
-	}
-
-	if (_enteredArea)
-	{
-		//active
-		if (InHRI(lat, lon))
-		{
-			//in HRI
-			//should be either active or HRI warning
-			if(speed <= _HRIWarningThresholdSpeed)
-			{
-				//speed is below threshold, HRI warning conditions met
-				if(!_inHRISevereWarning)
-				{
-					//HRI warning has not been sent
-					//send HRI warning
-					_inHRISevereWarning = true;
-					SendInHRISevereWarning();
-					//clear safe stop alert flag if set
-					_warningActive = false;
-				}
-			}
-			else
-			{
-				//speed is above threshold, HRI warning conditions NOT met
-				if(_inHRISevereWarning)
-				{
-					//clear HRI warning if set
-					SendInHRIWarningAlertCleared();
-					_inHRISevereWarning = false;
-				}
-				if (_warningActive)
-				{
-					//clear safe stop alert if set
-					SendAlertCleared();
-					_warningActive = false;
-				}
-			}
-		}
-		else if (_preemption)
-		{
-			//in lane with preemption
-			//should be either active or safe stop alert
-			if(crossingDistance < safetyStopDistance || (expectedStopDistance > crossingDistance && _useDeceleration))
-			{
-				//safe stop alert conditions met
-				if (!_warningActive)
-				{
-					//clear safe stop alert if set
-					SendAlert();
-					_warningActive = true;
-					//clear HRI warning flag if set
-					_inHRISevereWarning = false;
-				}
-			}
-			else
-			{
-				//safe stop alert conditions NOT met
-				if(_inHRISevereWarning)
-				{
-					//clear HRI warning if set
-					SendInHRIWarningAlertCleared();
-					_inHRISevereWarning = false;
-				}
-				if (_warningActive)
-				{
-					//clear safe stop alert if set
-					SendAlertCleared();
-					_warningActive = false;
-				}
-			}
-		}
-		else
-		{
-			//deactivate
-			_enteredArea = false;
-			_inHRISevereWarning = false;
-			_warningActive = false;
-			SendApplicationInactive();
-		}
-	}
-
-}
-
-
-
-/**
- * Function decides whether the vehicle needs to be alerted,
- * and if it does sends the proper alert to the vehicle. If
- * the vehicle is already decelerating the alerts are suppressed.
- * If the vehicle is still outside of the safe stopping zone
- * the alerts are also suppressed.
- */
-void RCVWPlugin::AlertVehicle()
-{
-	bool logCalculations = false;
-
-	double speed;
-	double prevSpeed;
-	uint64_t speedTime;
-	uint64_t prevSpeedTime;
-	double lat;
-	double lon;
-	{
-		std::lock_guard<mutex> lock(_locationLock);
-		speed = _speed;
-		prevSpeed = _prevSpeed;
-		speedTime = _speedTime;
-		prevSpeedTime = _prevSpeedTime;
-		lat = _lat;
-		lon = _long;
-	}
-	if (_lastLoggedspeed != 0 || speed != 0)
-	{
-		PLOG(logDEBUG) << "Latitude: " << lat << ", Longitude: " << lon << ", Speed: " << speed << ", PrevSpeed: " << prevSpeed << ", Preemption: " << _preemption;
+		PLOG(logDEBUG) << std::setprecision(10) << "Latitude: " << lat << ", Longitude: " << lon << ", Speed: " << speed << ", PrevSpeed: " << prevSpeed << ", HDOP: " << hdop << ", Preemption: " << _preemption;
 		double lastLoggedspeed = speed;
 		_lastLoggedspeed = lastLoggedspeed;
 		logCalculations = true;
 	}
 
-	//first check if stopped in HRI (HRI on track warning)
-
-	if(CheckForOnTrackWarning(lat, lon, speed))
-		return;
-
-
-	// If the vehicle is decelerating, no warning should be issued.
-	// If a warnign has been issued and the vehicle begins to decelerate
-	// remove the warning.
-//	if(IsDecelerating())
-//	{
-//		PLOG(logDEBUG) << "Vehicle Decelerating";
-//		if(_warningActive)
-//		{
-//			SendAlertCleared();
-//
-//			_warningActive = false;
-//		}
-//		return;
-//	}
-
-	//calculate crossing distance and safe stopping distance
 	double mu = _mu * _weatherFactor;
-	double safetyStopDistance = GetStoppingDistance(speed, mu, 0.0) * _safetyOffset;
-	double crossingDistance = GetDistanceToCrossing(lat, lon);
+	double safetyStopDistanceV1 = GetStoppingDistance(speed, mu, 0.0) * _safetyOffset;
+	double safetyStopDistance;
+	if (_v2vehicleType == V2VehicleType::Car)
+		 safetyStopDistance = GetStoppingDistanceV2(speed, _v2MinDecelerationCarMPSS, grade);
+	else if (_v2vehicleType == V2VehicleType::LightTruck)
+		 safetyStopDistance = GetStoppingDistanceV2(speed, _v2MinDecelerationLightTruckMPSS, grade);
+	else if (_v2vehicleType == V2VehicleType::HeavyTruck)
+		 safetyStopDistance = GetStoppingDistanceV2(speed, _v2MinDecelerationHeavyTruckMPSS, grade);
+	else
+		 safetyStopDistance = GetStoppingDistanceV2(speed, _v2MinDecelerationCarMPSS, grade);
+
 	double expectedStopDistance = 0;
 	double acceleration;
 
-	if(speed < prevSpeed)
+	//calculate acceleration
+	if (!locationProcessed)
 	{
+		//have new data
+		if(speed < prevSpeed)
+		{
+			if (_useCalculatedDeceleration)
+				checkDeceleration = true;
+			//calculate expected stop distance due to deceleration
+			acceleration = (speed - prevSpeed) / (((double)(speedTime - prevSpeedTime)) / 1000);
+			expectedStopDistance = (-1 * (speed * speed)) / (2 * acceleration);
+			_lastCalculatedAcceleration = acceleration;
+			_lastCalculatedExpectedStopDistance = expectedStopDistance;
+			PLOG(logDEBUG) << std::setprecision(10) << "Calculated Acceleration: " << acceleration << ", expectedStopDistance: " << expectedStopDistance;
+		}
+		else
+		{
+			_lastCalculatedAcceleration = 0;
+			_lastCalculatedExpectedStopDistance = 999999;
+		}
+	}
+	else
+	{
+		//reuse old data
+		if (_lastCalculatedAcceleration < 0)
+		{
+			if (_useCalculatedDeceleration)
+				checkDeceleration = true;
+			acceleration = _lastCalculatedAcceleration;
+			expectedStopDistance = _lastCalculatedExpectedStopDistance;
+			PLOG(logDEBUG) << std::setprecision(10) << "Calculated Acceleration: " << acceleration << ", expectedStopDistance: " << expectedStopDistance;
+		}
+	}
+
+	//check for valid deceleration
+	if (currentTime - lastVBM <= v2CriticalMessageExpiration && _acceleration < 0)
+	{
+		if (_v2useVBMDeceleration)
+			checkDeceleration = true;
 		//calculate expected stop distance due to deceleration
-		acceleration = (speed - prevSpeed) / (((double)(speedTime - prevSpeedTime)) / 1000);
-		expectedStopDistance = (-1 * (speed * speed)) / (2 * acceleration);
-		PLOG(logDEBUG) << "SpeedTime: " << speedTime << ", PrevSpeedTime: " << prevSpeedTime <<  ", Acceleration: " << acceleration;
+		expectedStopDistance = (-1 * (speed * speed)) / (2 * _acceleration);
+		PLOG(logDEBUG) << std::setprecision(10) << "VBM Acceleration: " << _acceleration << ", expectedStopDistance: " << expectedStopDistance;
 	}
 
 	if (logCalculations)
 	{
-		PLOG(logDEBUG) << "VSE: " << _mu << ", WeatherFactor: " << _weatherFactor <<  ", ReactionTime: " << _reactionTime;
-		PLOG(logDEBUG) << "CrossingDistance: " << crossingDistance << ", SafetyStopDistance: " << safetyStopDistance << ", ExpectedStopDistance: " << expectedStopDistance;
+		//PLOG(logDEBUG) << "VSE: " << _mu << ", WeatherFactor: " << _weatherFactor <<  ", ReactionTime: " << _reactionTime;
+		PLOG(logDEBUG) << std::setprecision(10) << "CrossingDistance: " << crossingDistance << ", SafetyStopDistanceV1: " << safetyStopDistanceV1 << ", SafetyStopDistance: " << safetyStopDistance << ", ExpectedStopDistance: " << expectedStopDistance;
 	}
 
-	if(crossingDistance == -1 && !InHRI(lat, lon))
+
+	inHRI = InHRI(lat, lon, speed, heading);
+
+	if (!_availableActive)
 	{
-		//The vehicle is not currently in an HRI or a valid lane
-
-		if(_enteredArea)
+		if (_inLane || inHRI)
 		{
-			//If the vehicle was previously in an HRI, send a System Inactive message to the UI
-			SendApplicationInactive();
-
-			_enteredArea = false;
+			_availableActive = true;
+			SendAvailable();
 		}
-		return;
 	}
 	else
 	{
-		//The vehicle has entered the map in a valid lane with preemption.
-		if(!_enteredArea && _preemption)
+		if (!_inLane && !inHRI)
 		{
-			SendApplicationActive();
-
-			_enteredArea = true;
+			_availableActive = false;
+			SendAvailableCleared();
 		}
 	}
 
-	__enteredArea_mon.check();
-
-	// The distance to the crossing is less than the safe stopping distance,
-	// The preemption signal was found in the spat message i.e. the train may be present.
-	// OR we are in the HRI but traveling faster than the threshold
-
-	if((crossingDistance < safetyStopDistance || expectedStopDistance > crossingDistance) && _preemption)
+	if (!_approachInformActive)
 	{
-		PLOG(logDEBUG) << "Send Safe Stop Alert";
-
-		SendAlert();
-
-		_lastWarning = GetMsTimeSinceEpoch();
-		_warningActive = true;
+		if (_preemption && !inHRI)
+		{
+			_approachInformActive = true;
+			SendApproachInform();
+		}
 	}
 	else
 	{
-		if (_warningActive)
+		if (!_preemption || inHRI)
 		{
-			PLOG(logDEBUG) << "Cancel Safe Stop Alert";
-			if (_preemption)
-			{
-				SendAlertCleared();
-			}
-			else if (!InHRI(lat, lon))
-			{
-				SendApplicationInactive();
-				_enteredArea = false;
-			}
-			_warningActive = false;
-		}
-		else if (_enteredArea && !_preemption && !InHRI(lat, lon))
-		{
-			SendApplicationInactive();
-			_enteredArea = false;
+			_approachInformActive = false;
+			SendApproachInformCleared();
 		}
 	}
 
-	//_preemption = true;  I don't know why this is here.  I added an else in the GetDistanceToCrossing to set to true
+	if (!_approachWarningActive)
+	{
+		if (_preemption  && !inHRI &&
+				crossingDistance < safetyStopDistance &&
+				(!checkDeceleration || expectedStopDistance > crossingDistance))
+		{
+			_approachWarningActive = true;
+			SendApproachWarning();
+		}
+	}
+	else
+	{
+		if (!_preemption || inHRI ||
+				crossingDistance >= safetyStopDistance ||
+				(checkDeceleration && expectedStopDistance <= crossingDistance))
+		{
+			_approachWarningActive = false;
+			SendApproachWarningCleared();
+		}
+	}
+
+
+	if (!_hriWarningActive)
+	{
+		if (inHRI && speed <= _HRIWarningThresholdSpeed)
+		{
+			_hriWarningActive = true;
+			SendHRIWarning();
+		}
+	}
+	else
+	{
+		if (!inHRI || speed > _HRIWarningThresholdSpeed)
+		{
+			_hriWarningActive = false;
+			SendHRIWarningCleared();
+		}
+	}
+
+
 }
+
 
 /**
  * Generates a time to use for timestamps.
@@ -1195,6 +1423,10 @@ bool RCVWPlugin::IsLocationInRangeOfEquippedHRI(double latitude, double longitud
  */
 int RCVWPlugin::Main()
 {
+	uint64_t currentTime;
+	double bestNextLocationInterval;
+	double testLocationInterval;
+	bool frequencyError = false;
 	while(!_configSet)
 	{
 		usleep(1000);
@@ -1205,10 +1437,18 @@ int RCVWPlugin::Main()
 
 	while (_plugin->state != IvpPluginState_error)
 	{
-		if(!_mapReceived || !_spatReceived)
+		frequencyError = false;
+		//if we have at least 3 samples we have an average interval
+		if (_v2CheckLocationFrequency && _v2LocationFrequencyCount > 2)
 		{
-			CheckForErrorCondition(_lat, _long);
-			usleep(1000000);
+			//test if interval out of range
+			if (_v2LocationFrequencyCurrentIntervalMS > _v2LocationFrequencyTargetIntervalMS)
+				frequencyError = true;
+		}
+		if(!_mapReceived || !_spatReceived || !_locationReceived || (_v2CheckRTK && !_rtkReceived) || frequencyError)
+		{
+			CheckForErrorCondition(_lat, _long, frequencyError);
+			usleep(100000);
 			continue;
 		}
 		else
@@ -1216,20 +1456,15 @@ int RCVWPlugin::Main()
 			//No longer in Error Condition if we get here, cancel any errors and move on
 			if(_errorActive)
 			{
-				PLOG(logDEBUG) << "SendErrorCleared";
 				SendErrorCleared();
 				_errorActive = false;
-				if (!_enteredArea)
-				{
-					SendApplicationInactive();
-				}
 			}
 		}
 
 		uint64_t curTime = GetMsTimeSinceEpoch();
 		bool messageCheck = false;
 
-		if(curTime - _lastSpat > _messageExpiration)
+		if(curTime - _lastSpat > _v2CriticalMessageExpiration)
 		{
 			if(_spatReceived)
 			{
@@ -1249,33 +1484,26 @@ int RCVWPlugin::Main()
 			messageCheck = true;
 		}
 
-		if(curTime - _lastLocation > _messageExpiration)
+		if(curTime - _lastLocation > _v2CriticalMessageExpiration)
 		{
 			if(_locationReceived)
 			{
-				SendError("Location Data Invalid");
 				SetStatus("Location Received", false);
+				SetStatus("RTK Type", "");
 				_locationReceived = false;
 			}
 			messageCheck = true;
 		}
 
-
-
-
-		//Vehicle is located near a known equipped HRI, but no MAP has been received
-
-
-
 		//If any of the messages have expired skip the other calculations.
 		if(messageCheck)
 		{
-			usleep(500000);
+			//usleep(500000);
 			continue;
 		}
 
 		AlertVehicle_2();
-		usleep(100000);
+		usleep(10000);
 	}
 
 
@@ -1283,64 +1511,109 @@ int RCVWPlugin::Main()
 }
 
 
-void RCVWPlugin::CheckForErrorCondition(double lat, double lon)
+void RCVWPlugin::CheckForErrorCondition(double lat, double lon, bool frequencyError)
 {
 	bool isInRangeOfHRI = IsLocationInRangeOfEquippedHRI(lat, lon);
 
 	bool isErrorCondition = false;
 	string errorMessage = "";
 
-	//TODO Check for error condition
+	//Check for error condition
 	if(isInRangeOfHRI && !_mapReceived)
 	{
+		//no MAP and in range of HRI
 		isErrorCondition = true;
 		errorMessage = "MAP Data Not Received";
+		if (_stateErrorMessage != V2StateErrorMessage::MAP)
+		{
+			_stateErrorMessage = V2StateErrorMessage::MAP;
+			SetStatus("Error", errorMessage);
+		}
 	}
 	else if(isInRangeOfHRI && !_spatReceived)
 	{
+		//no SPAT and in range of HRI
 		isErrorCondition = true;
 		errorMessage = "SPAT Data Not Received";
+		if (_stateErrorMessage != V2StateErrorMessage::SPAT)
+		{
+			_stateErrorMessage = V2StateErrorMessage::SPAT;
+			SetStatus("Error", errorMessage);
+		}
+	}
+	else if(!_locationReceived)
+	{
+		//no location (GPS)
+		isErrorCondition = true;
+		errorMessage = "Location Data Not Received";
+		if (_stateErrorMessage != V2StateErrorMessage::Location)
+		{
+			_stateErrorMessage = V2StateErrorMessage::Location;
+			SetStatus("Error", errorMessage);
+		}
+	}
+	else if(frequencyError)
+	{
+		//GPS frequency less than target
+		isErrorCondition = true;
+		errorMessage = "Location Data Frequency Too Low";
+		if (_stateErrorMessage != V2StateErrorMessage::Frequency)
+		{
+			_stateErrorMessage = V2StateErrorMessage::Frequency;
+			SetStatus("Error", errorMessage);
+		}
+	}
+	else if(_v2CheckRTK && isInRangeOfHRI && !_rtkReceived)
+	{
+		//have location but no RTK fix and in range of HRI
+		isErrorCondition = true;
+		errorMessage = "RTK Data Not Received";
+		if (_stateErrorMessage != V2StateErrorMessage::RTK)
+		{
+			_stateErrorMessage = V2StateErrorMessage::RTK;
+			SetStatus("Error", errorMessage);
+		}
 	}
 	else if(!isInRangeOfHRI)
 	{
+		//clear error condition if out of range of HRI and it's not a location (GPS) error
 		isErrorCondition = false;
 	}
 
 	if(isErrorCondition && !_errorActive)
 	{
+		//send error and clear all other conditions
 		SendError(errorMessage);
 		_errorActive = true;
+		if (_availableActive)
+		{
+			_availableActive = false;
+			SendAvailableCleared();
+		}
+		if (_approachInformActive)
+		{
+			_approachInformActive = false;
+			SendApproachInformCleared();
+		}
+		if (_approachWarningActive)
+		{
+			_approachWarningActive = false;
+			SendApproachWarningCleared();
+		}
+		if (_hriWarningActive)
+		{
+			_hriWarningActive = false;
+			SendHRIWarningCleared();
+		}
 	}
 
 	if(!isErrorCondition && _errorActive)
 	{
+		_stateErrorMessage = V2StateErrorMessage::NoError;
+		SendErrorCleared();
 		_errorActive = false;
-		uint64_t curTime = GetMsTimeSinceEpoch();
-		if(_inHRISevereWarning)
-		{
-			PLOG(logDEBUG) << "Clear Error And Send In HRI Severe Warning";
-			SendInHRISevereWarning();
-			_lastWarning = curTime;
-		}
-		else if(_warningActive)
-		{
-			PLOG(logDEBUG) << "Clear Error And Send Safe Stop Alert";
-			SendAlert();
-			_lastWarning = curTime;
-		}
-		else if(_enteredArea)
-		{
-			PLOG(logDEBUG) << "Clear Error And Send Application Active";
-			SendApplicationActive();
-		}
-		else
-		{
-			PLOG(logDEBUG) << "Clear Error And Send Application Inactive";
-			SendApplicationInactive();
-		}
 	}
 }
-
 
 
 } /* namespace RCVWPlugin */

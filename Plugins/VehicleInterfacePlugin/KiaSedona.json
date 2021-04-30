@@ -1,0 +1,91 @@
+{
+	"name": "KiaRental",
+	"revision": "20170411",
+	"comment": "Adapted from Kia Sedona Rental used in E-TRP testing",
+	"can": [
+		{
+			"name": "monitor-gear",
+			"id": "0x52A",
+			"mask": "SFF",
+			"elements": [
+				{
+					"name": "gear-position",
+					"byte": 1,
+					"len": 1,
+					"mask": "0x1F",
+					"states": {
+						"Park": 2,
+						"Reverse": 4,
+						"Other": 8,
+						"Drive": "*"
+					}
+				}
+			]
+		},
+		{
+			"name": "monitor-turn",
+			"id": "0x541",
+			"mask": "SFF",
+			"elements": [
+				{
+					"name": "turn-signal",
+					"byte": 2,
+					"len": 6,
+					"mask": "0x080000000040",
+					"states": {
+						"Left": "0x080000000000",
+						"Right": "0x000000000040",
+						"Off": "*"
+					}
+				}
+			]
+		},
+		{
+			"name": "monitor-brake",
+			"id": "0x329",
+			"mask": "SFF",
+			"elements": [
+				{
+					"name": "break-applied",
+					"byte": 4,
+					"len": 1,
+					"mask": "0x02",
+					"states": {
+						"Active": 2,
+						"Inactive": "*"
+					}
+				}
+			]
+		},
+		{
+			"name": "monitor-front_door",
+			"id": "0x541",
+			"mask": "SFF",
+			"elements": [
+				{
+					"name": "front-door-opened",
+					"byte": 1,
+					"len": 1,
+					"mask": "0x01",
+					"states": {
+						"Active": 1,
+						"Inactive": "*"
+					}
+				}
+			]
+		},
+		{
+			"name": "monitor-speed",
+			"id": "0x111",
+			"mask": "SFF",
+			"elements": [
+				{
+					"name": "speed",
+					"byte": 5,
+					"units": "kph",
+					"scale": 0.2
+				}
+			]
+		}
+	]
+}

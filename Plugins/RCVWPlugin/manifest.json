@@ -1,8 +1,8 @@
 {
-	"name":"RCVW",
+	"name":"@TMX_PLUGIN_NAME@",
 	"description":"Creates RCVW Alerts and Warnings",
-	"version":"1.0.0",
-	"exeLocation":"/Debug/RCVWPlugin",
+	"version":"@PROJECT_VERSION@",
+	"exeLocation":"/bin/@PROJECT_NAME@",
 	"coreIpAddr":"127.0.0.1",
 	"corePort":24601,
 	"messageTypes":[
@@ -30,7 +30,7 @@
 	   },
 	   {
 	       "key":"Message Expiration",
-	       "default":"6000",
+	       "default":"2000",
 	       "description":"The amount of time in ms to wait before issuing a warning that the current message data is stale."
 	   },
 	   {
@@ -40,7 +40,7 @@
 	   },
 	   {
 	       "key":"Distance To HRI",
-	       "default":"300.0",
+	       "default":"480.0",
 	       "description":"Distance to a known HRI for warning a driver that communications with the RBS are down."
 	   },
 	   {
@@ -59,9 +59,139 @@
 	       "description":"The maximum vehicle speed in meters per second for which the HRI warning will be active if the vehicle is in the HRI."
 	   },
 	   {
-	       "key":"Use Deceleration",
+	       "key":"Use Calculated Deceleration",
 	       "default":"false",
 	       "description":"Use calculated deceleration to determine if vehicle will stop before HRI in addition to velocity based warning calculation"
-	   }
+	   },
+	   {
+	       "key":"LogLevel",
+	       "default":"INFO",
+	       "description":"The log level"
+	   },
+	   {
+	       "key":"V2 Antenna Placement X",
+	       "default":"0.5",
+	       "description":"Antenna placement X with respect to front left corner of vehicle in meters"
+	   },
+	   {
+	       "key":"V2 Antenna Placement Y",
+	       "default":"2.5",
+	       "description":"Antenna placement Y with respect to front left corner of vehicle in meters"
+	   },
+	   {
+	       "key":"V2 Antenna Height",
+	       "default":"1.5",
+	       "description":"Antenna height with respect to the road surface in meters"
+	   },
+	   {
+	       "key":"V2 GPS Error",
+	       "default":"3.12",
+	       "description":"GPS error in meters"
+	   },
+	   {
+	       "key":"V2 Reaction Time",
+	       "default":"2.5",
+	       "description":"Reaction time in seconds"
+	   },
+	   {
+	       "key":"V2 Communication Latency",
+	       "default":"0.3",
+	       "description":"Communication latency in seconds"
+	   },
+	   {
+	       "key":"V2 Application Latency",
+	       "default":"0.085",
+	       "description":"Application latency in seconds"
+	   },
+	   {
+	       "key":"V2 Deceleration Car",
+	       "default":"3.4",
+	       "description":"Minimum expected controlled deceleration for a car in m/s^2"
+	   },
+	   {
+	       "key":"V2 Deceleration Light Truck",
+	       "default":"2.148",
+	       "description":"Minimum expected controlled deceleration for a light truck in m/s^2"
+	   },
+	   {
+	       "key":"V2 Deceleration Heavy Truck",
+	       "default":"2.322",
+	       "description":"Minimum expected controlled deceleration for a heavy truck in m/s^2"
+	   },
+	   {
+	       "key":"V2 Vehicle Type",
+	       "default":"1",
+	       "description":"Vehicle type, 1 = Car, 2 = Light Truck, 3 = Heavy Truck"
+	   },
+	   {
+	       "key":"V2 Vehicle Length",
+	       "default":"4.8",
+	       "description":"The length of the vehicle in meters"
+	   },
+	   {
+	       "key":"V2 Use VBM Deceleration",
+	       "default":"true",
+	       "description":"Use VBM deceleration to determine if vehicle will stop before HRI in addition to velocity based warning calculation"
+	   },
+	   {
+	       "key":"V2 Log SPAT",
+	       "default":"false",
+	       "description":"Log SPAT messages at DEBUG level"
+	   },
+	   {
+	       "key":"V2 Critical Message Expiration",
+	       "default":"500",
+	       "description":"The amount of time in ms to wait before issuing a warning that the current critical message data is stale."
+	   },
+	   {
+	       "key":"V2 Use Config Grade",
+	       "default":"false",
+	       "description":"Use the V2 Grade config variable for grade calculations."
+	   },
+	   {
+	       "key":"V2 Grade",
+	       "default":"0",
+	       "description":"If enabled, this grade value will be used in grade calculations."
+	   },
+	   {
+	       "key":"V2 Check RTK",
+	       "default":"true",
+	       "description":"If enabled check location message for RTK fix while in range of HRI."
+	   },
+	   {
+	       "key":"V2 Check Location Frequency",
+	       "default":"true",
+	       "description":"If enabled check location message frequency."
+	   },
+	   {
+	       "key":"V2 Location Frequency Sample Size",
+	       "default":"30",
+	       "description":"The number of location messages to sample to determine frequency."
+	   },
+	   {
+	       "key":"V2 Minimum Location Frequency",
+	       "default":"8",
+	       "description":"The minimum allowed average location message frequency in messages per second."
+	   },
+	   {
+	       "key":"V2 Max Heading Change",
+	       "default":"45",
+	       "description":"The maximum allowed heading change in degrees before ignoring the new position."
+	   },
+	   {
+	       "key":"V2 Max Ignored Positions",
+	       "default":"7",
+	       "description":"The maximum number of consecutively ignored positions due to heading change."
+	   },
+	   {
+	       "key":"MessageManagerStrategy",
+	       "default":"Random",
+	       "description":"Strategy for assignment of messages to new threads. RoundRobin, Random or ShortestQueue."
+	   },
+	   {
+	       "key":"MessageManagerThreads",
+	       "default":"3",
+	       "description":"The number of worker threads."
+	   }	   
 	]
 }

@@ -1,0 +1,556 @@
+{
+	"file":"Cleveland Bus Fleet",
+	"revision":"20170411",
+	"2900": {
+		"info": {
+			"make":"Flyer",
+			"model":"2900",
+			"connection":"socketcan"
+		},
+		"requests":	[
+			{
+				"name":"monitor-gear",
+				"bus":"can0",
+				"id":"0x18F00503",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"gear-position",
+						"byte": 0,
+						"len": 1,
+						"states": {
+							"Other":"0x7D",
+							"Drive":"0x82",
+							"Reverse":"0x7C"
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-turn",
+				"bus":"can0",
+				"id":"0x14FF20D1",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"turn-signal",
+						"comment":"Initial test was D0 - Off, D4 - Left, F0 - Right, F4 - Hazards. New test was 10 - Off, 14 - Left, 30 - Right, 34 - Hazards. So, check bits 6, 5 and 3 for Off, Bit 3 for Left, Bits 6 & 5 for Right",
+						"byte": 0,
+						"len": 1,
+						"states": {
+							"Off": {
+								"mask":"0x34",
+								"repeat":"5",
+								"value":"0x10"
+							},
+							"Left": {
+								"mask":"0x04",
+								"value":"0x04"
+							},
+							"Right": {
+								"mask":"0x30",
+								"value":"0x30"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-brake",
+				"bus":"can0",
+				"id":"0x14FF20E3",
+				"mask":"EFF",			
+				"elements": [
+					{
+						"name":"break-applied",
+						"byte": 1,
+						"len": 1,
+						"states": {
+							"0": {
+								"mask":"0x01",
+								"value": "0x01"
+							},
+							"1": {
+								"mask":"0x01",
+								"value": "0x00"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-front_door",
+				"bus":"can0",
+				"id":"0x14FF20E5",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"front-door-opened",
+						"byte":0,
+						"len":1,
+						"states": {
+							"0": {
+								"mask":"0x02",
+								"value":"0x00"
+							},
+							"1": {
+								"mask":"0x02",
+								"value":"0x02"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-rear_door",
+				"bus":"can0",
+				"id":"0x14FF20E5",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"rear-door-opened",
+						"byte":0,
+						"len":1,
+						"states": {
+							"0": {
+								"mask":"0x04",
+								"value":"0x00"
+							},
+							"1": {
+								"mask":"0x04",
+								"value":"0x04"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-speed",
+				"bus":"can0",
+				"id":"0x18FEF100",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"speed",
+						"byte":2,
+						"len":-2,
+						"scale":"0.00390625",
+						"units":"kph"
+					}
+				]
+			}
+		]
+	},
+	"3000": {
+		"info": {
+			"make":"Flyer",
+			"model":"3000",
+			"connection":"socketcan"
+		},
+		"requests":	[
+			{
+				"name":"monitor-gear",
+				"bus":"can0",
+				"id":"0x18F00503",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"gear-position",
+						"byte": 0,
+						"len": 1,
+						"states": {
+							"Other":"0x7D",
+							"Drive":"0x7E",
+							"Reverse":"0x7C"
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-turn",
+				"bus":"can0",
+				"id":"0x14FF00D2",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"turn-signal",
+						"byte": 2,
+						"len": 1,
+						"states": {
+							"Off": {
+								"mask":"0x06",
+								"repeat":"5",
+								"value":"0x00"
+							},
+							"Left": {
+								"mask":"0x04",
+								"value":"0x04"
+							},
+							"Right": {
+								"mask":"0x02",
+								"value":"0x02"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-brake",
+				"bus":"can0",
+				"id":"0x14FF00D2",
+				"mask":"EFF",			
+				"elements": [
+					{
+						"name":"break-applied",
+						"byte": 1,
+						"len": 1,
+						"states": {
+							"0": {
+								"mask":"0x88",
+								"value": "0x00"
+							},
+							"1": {
+								"mask":"0x88",
+								"value": "0x88"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-front_door",
+				"bus":"can0",
+				"id":"0x14FF00D2",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"front-door-opened",
+						"byte":1,
+						"len":1,
+						"states": {
+							"0": {
+								"mask":"0x04",
+								"value":"0x00"
+							},
+							"1": {
+								"mask":"0x04",
+								"value":"0x04"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-rear_door",
+				"bus":"can0",
+				"id":"0x14FF00D2",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"rear-door-opened",
+						"byte":1,
+						"len":1,
+						"states": {
+							"0": {
+								"mask":"0x08",
+								"value":"0x00"
+							},
+							"1": {
+								"mask":"0x08",
+								"value":"0x08"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-speed",
+				"bus":"can0",
+				"id":"0x18FEF100",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"speed",
+						"byte":2,
+						"len":-2,
+						"scale":"0.00390625",
+						"units":"kph"
+					}
+				]
+			}
+		]
+	},
+	"3200": {
+		"info": {
+			"make":"Flyer",
+			"model":"3200",
+			"connection":"socketcan"
+		},
+		"requests":	[
+			{
+				"name":"monitor-gear",
+				"bus":"can0",
+				"id":"0x18F00503",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"gear-position",
+						"byte": 0,
+						"len": 1,
+						"states": {
+							"Other":"0x7D",
+							"Drive":"0x7E",
+							"Reverse":"0x7C"
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-turn",
+				"bus":"can0",
+				"id":"0x18FF0017",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"turn-signal",
+						"byte": 0,
+						"len": 1,
+						"states": {
+							"Off": {
+								"mask":"0x06",
+								"repeat":"5",
+								"value":"0x00"
+							},
+							"Left": {
+								"mask":"0x04",
+								"value":"0x04"
+							},
+							"Right": {
+								"mask":"0x02",
+								"value":"0x02"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-brake",
+				"bus":"can0",
+				"id":"0x14FF00D9",
+				"mask":"EFF",			
+				"elements": [
+					{
+						"name":"break-applied",
+						"byte": 0,
+						"len": 1,
+						"states": {
+							"0": {
+								"mask":"0x10",
+								"value": "0x00"
+							},
+							"1": {
+								"mask":"0x10",
+								"value": "0x10"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-front_door",
+				"bus":"can0",
+				"id":"0x14FF00D1",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"front-door-opened",
+						"byte":0,
+						"len":1,
+						"states": {
+							"0": {
+								"mask":"0x44",
+								"value":"0x04"
+							},
+							"1": {
+								"mask":"0x44",
+								"value":"0x44"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-rear_door",
+				"bus":"can0",
+				"id":"0x14FF00D1",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"rear-door-opened",
+						"byte":0,
+						"len":1,
+						"states": {
+							"0": {
+								"mask":"0x84",
+								"value":"0x04"
+							},
+							"1": {
+								"mask":"0x84",
+								"value":"0x84"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name":"monitor-speed",
+				"bus":"can0",
+				"id":"0x18FEF100",
+				"mask":"EFF",
+				"elements": [
+					{
+						"name":"speed",
+						"byte":2,
+						"len":-2,
+						"scale":"0.00390625",
+						"units":"kph"
+					}
+				]
+			}
+		]
+	},
+	"3700": {
+		"info": {
+			"make":"Gillig",
+			"model":"3700",
+			"connection":"composite"
+		},
+		"connections": [
+			{
+				"connection":"socketcan",
+				"requests": [
+					{
+						"name":"monitor-gear",
+						"bus":"can0",
+						"id":"0x18F00503",
+						"mask":"EFF",
+						"elements": [
+							{
+								"name":"gear-position",
+								"byte": 0,
+								"len": 1,
+								"states": {
+									"Other":"0x7D",
+									"Drive":"0x7E",
+									"Reverse":"0x7C"
+								}
+							}
+						]
+					},
+					{
+						"name":"monitor-brake",
+						"bus":"can0",
+						"id":"0x18FEF121",
+						"mask":"EFF",
+						"elements": [
+							{
+								"name":"break-applied",
+								"byte": 3,
+								"len": 1,
+								"states": {
+									"0": {
+										"mask":"0x10",
+										"value": "0x00"
+									},
+									"1": {
+										"mask":"0x10",
+										"value": "0x10"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name":"monitor-speed",
+						"bus":"can0",
+						"id":"0x18FEF100",
+						"mask":"EFF",
+						"elements": [
+							{
+								"name":"speed",
+								"byte":2,
+								"len":-2,
+								"scale":"0.00390625",
+								"units":"kph"
+							}
+						]
+					}
+				]
+			},
+			{
+				"connection":"adc",
+				"name":"monitor-adc",
+				"device":"/dev/spidev0.0",
+				"pins":7,
+				"elements": [
+					{
+						"name":"turn-signal",
+						"pin":0,
+						"states": {
+							"Off": {
+								"mask":"0x000",
+								"value":0,
+								"repeat":3
+							},
+							"Left": {
+								"mask":"0xFFF",
+								"value":"0xBBB"
+							}
+						}
+					},
+					{
+						"name":"turn-signal",
+						"pin":1,
+						"states": {
+							"Right": {
+								"mask":"0xFFF",
+								"value":"0xBBB"
+							}
+						}
+					},
+					{
+						"name":"front-door-opened",
+						"pin":2,
+						"states": {
+							"0": {
+								"mask":"0xFFF",
+								"value":0,
+								"repeat":3
+							},
+							"1": {
+								"mask":"0xFFF",
+								"value":"0xBBB"
+							}
+						}
+					},
+					{
+						"name":"rear-door-opened",
+						"pin":2,
+						"states": {
+							"0": {
+								"mask":"0xFFF",
+								"value":0,
+								"repeat":3
+							},
+							"1": {
+								"mask":"0xFFF",
+								"value":"0xBBB"
+							}
+						}
+					}
+					
+				]
+			}
+		]
+	}
+}

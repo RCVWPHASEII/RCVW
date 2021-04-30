@@ -1,0 +1,114 @@
+{
+	"name": "SAE J1979",
+	"revision": "20190530",
+	"comment": "Universal configuration for SAE J1979 PID requests",
+	"can": [
+		{
+			"name": "Engine Temp",
+			"comment": "Engine Coolant Temperature over ODB-II",
+			"type": "ODB-II",
+			"id": "0x0105",
+			"frequency": "100 ms",
+			"elements": [
+				{
+					"name": "EngineTemp",
+					"comment": "Engine coolant temperature",
+					"datatype": "int",
+					"unit": "⁰C",
+					"byte": 0,
+					"len": 1,
+					"adjust": -40
+				}
+			]
+		},
+		{
+			"name": "Engine RPM",
+			"comment": "Engine Rotations per Minute over ODB-II",
+			"type": "ODB-II",
+			"id": "0x010C",
+			"frequency": "100 ms",
+			"elements": [
+				{
+					"name": "RPM",
+					"comment": "Rotations per Minute",
+					"datatype": "double",
+					"unit": "rpm",
+					"byte": 0,
+					"len": 2,
+					"scale": 0.25
+				}
+			]
+		},
+		{
+			"name": "Vehicle Speed",
+			"comment": "Vehicle Speed over ODB-II",
+			"type": "ODB-II",
+			"id": "0x010D",
+			"frequency": "100 ms",
+			"elements": [
+				{
+					"name": "Speed",
+					"comment": "The speed of the vehicle",
+					"datatype": "int",
+					"unit": "kph",
+					"byte": 0,
+					"len": 1
+				}
+			]
+		},
+		{
+			"name": "Throttle position",
+			"comment": "Throttle position over ODB-II",
+			"type": "ODB-II",
+			"id": "0x0111",
+			"frequency": "100 ms",
+			"elements": [
+				{
+					"name": "AcceleratorPosition",
+					"comment": "Percent throttle",
+					"datatype": "double",
+					"unit": "%",
+					"byte": 0,
+					"len": 1,
+					"scale": 0.3921568627450980392156862745098
+				}
+			]
+		},
+		{
+			"name": "Fuel Level",
+			"comment": "Fuel Tank Level Input over ODB-II",
+			"type": "ODB-II",
+			"id": "0x012F",
+			"frequency": "100 ms",
+			"elements": [
+				{
+					"name": "FuelLevel",
+					"comment": "Percentage fuel remaining",
+					"datatype": "double",
+					"unit": "%",
+					"byte": 0,
+					"len": 1,
+					"scale": 0.3921568627450980392156862745098
+				}
+			]
+		},
+		{
+			"name": "Air temperature",
+			"comment": "Ambient air temperature over ODB-II",
+			"type": "ODB-II",
+			"id": "0x0146",
+			"frequency": "100 ms",
+			"elements": [
+				{
+					"name": "Temp",
+					"comment": "Outside air temperature",
+					"datatype": "int",
+					"unit": "⁰C",
+					"byte": 0,
+					"len": 1,
+					"adjust": -40
+				}
+			]
+		}
+	]
+}
