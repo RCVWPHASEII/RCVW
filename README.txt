@@ -1,7 +1,7 @@
 Open Source Overview
 ============================
 Rail Crossing Violation Warning 
-v 1.0
+v 1.1
 <Application description>
 <Primary functions>
 <Installation and removal instructions>
@@ -27,33 +27,18 @@ Documentation
 
 Prerequisites
 
-AIOUSB Needs to be downloaded and installed
+Make sure the V2I Hub package was compiled and installed on the target machine.
 
-$ wget http://accesio.com/files/packages/AIOUSB-Latest.tar.gz
-$ tar -xvf AIOUSB-Latest.tar.gz
-$ cd AIOUSB-1.117.1/AIOUSB
-$ mkdir bin
-$ cd bin
-$ cmake ..
+Compilation
+
+$ cd RCVW/Plugins/
+$ cmake .
 $ make
-$ sudo make install
-$ sudo apt-get install fxload
 
-Compilation RCVWPlugin
+This will create a bin directory that contains the plugin executable, as well as a directory for each plugin.  However, a V2I Hub plugin must be packaged in a ZIP file to be installed to a system.  In order to package up any one of the plugins from the v2i-hub directory, do the following:
 
-$ cd RCVW/Plugins/RCVWPlugin/Debug
-$ cmake ..
-$ make package
-
-- This will create a RCVWPlugin-1.0.0.zip that can be installed using the V2I Hub admin portal.
-
-Compilation HRIStatusPlugin
-$ cd /RCVW/Plugins/HRIStatusPlugin/Debug
-$ cmake ..
-$ make package
-
-- This will create a HRIStatusPlugin-1.0.0.zip that can be installed using the V2I Hub admin portal.
-
+$ ln -s ../bin <PluginName>/bin
+$ zip <PluginName>.zip <PluginName>/bin/<PluginName> <PluginName>/manifest.json
 
 Installation
 See V2I Hub Sample Setup Guide for complete installation instructions
