@@ -2,6 +2,8 @@
 
 Rail Crossing Violation Warning 
 
+Plugins for V2I Hub version 3.3 that implement both Roadside and In-Vehicle operations of RCVW.
+
 # Prerequisites
 
 See system requirements for V2I Hub
